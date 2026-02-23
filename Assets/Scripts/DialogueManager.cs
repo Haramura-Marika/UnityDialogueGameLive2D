@@ -35,6 +35,9 @@ public class DialogueManager : MonoBehaviour
     private bool isWaitingForAI = false;
     private List<ChatMessage> chatHistory;
 
+    // 当前登录用户名（用于数据库存储）
+    private string _currentUsername;
+
     // 流式UI调度
     private readonly ConcurrentQueue<Action> _uiQueue = new ConcurrentQueue<Action>();
     private float _lastStreamUiUpdateTime = 0f;
@@ -48,6 +51,9 @@ public class DialogueManager : MonoBehaviour
     // TTS 播放队列（用于从回调线程调度到主线程）
     private readonly ConcurrentQueue<(string text, Action onComplete)> _ttsQueue = new ConcurrentQueue<(string, Action)>();
     private bool _isProcessingTTS = false; // 标记是否正在处理 TTS
+
+    private bool _chatInitialized = false;
+    private bool _chatInitializing = false;
 
     private void Awake()
     {
@@ -107,14 +113,72 @@ public class DialogueManager : MonoBehaviour
         }
     }
 
-    private async void Start()
+    private void Start()
     {
         _streamStopwatch = Stopwatch.StartNew();
         
-        // ??? chatContainer ?????????????
+        // 确保 chatContainer 有正确的布局组件配置
         EnsureChatContainerLayout();
         
-        await InitializeChatHistoryAsync();
+        // 不在 Start 中初始化对话，由 UIManager.EnterGame() 调用 InitChat()
+    }
+
+    /// <summary>
+    /// 由 UIManager 在登录成功进入游戏时调用，初始化或恢复对话
+    /// </summary>
+    public void InitChat()
+    {
+        // 防止重复初始化
+        if (_chatInitialized || _chatInitializing)
+        {
+            return;
+        }
+        _chatInitializing = true;
+
+        // 刷新当前用户名（登录后才有值）
+        _currentUsername = PlayerPrefs.GetString("current_user", string.Empty);
+
+        try
+        {
+            // 尝试从数据库加载历史记录
+            if (!string.IsNullOrEmpty(_currentUsername) && DatabaseManager.Instance != null)
+            {
+                var savedHistory = DatabaseManager.Instance.LoadChatHistory(_currentUsername);
+                if (savedHistory != null && savedHistory.chatHistory != null && savedHistory.chatHistory.Count >= 2)
+                {
+                    // 合法性校验：如果历史记录中只有系统消息+开场白（2条），
+                    // 说明没有真正的对话内容，直接开始新对话即可
+                    if (savedHistory.chatHistory.Count > 2)
+                    {
+                        Debug.Log($"[DialogueManager] 从数据库加载用户 {_currentUsername} 的历史记录 (角色: {savedHistory.characterName}, 消息数: {savedHistory.chatHistory.Count})");
+                        
+                        var textAsset = Resources.Load<TextAsset>($"Characters/{savedHistory.characterName}");
+                        if (textAsset != null)
+                        {
+                            _activeProfile = CharacterCardParser.ParseFromText(textAsset.text, savedHistory.characterName);
+                        }
+                        else
+                        {
+                            _activeProfile = ScriptableObject.CreateInstance<CharacterProfile>();
+                            _activeProfile.characterName = savedHistory.characterName;
+                        }
+                        
+                        this.chatHistory = savedHistory.chatHistory;
+                        ClearUI();
+                        RebuildUIFromHistory();
+                        _chatInitialized = true;
+                        return;
+                    }
+                }
+            }
+            
+            InitializeChatHistory();
+            _chatInitialized = true;
+        }
+        finally
+        {
+            _chatInitializing = false;
+        }
     }
 
     /// <summary>
@@ -186,6 +250,15 @@ public class DialogueManager : MonoBehaviour
     /// </summary>
     public void SaveProgress(string slotName = "autosave")
     {
+        // 优先保存到数据库
+        if (!string.IsNullOrEmpty(_currentUsername) && DatabaseManager.Instance != null && chatHistory != null)
+        {
+            string charName = _activeProfile != null ? _activeProfile.characterName : "Unknown";
+            DatabaseManager.Instance.SaveChatHistory(_currentUsername, charName, chatHistory, slotName);
+            return;
+        }
+
+        // 回退到文件保存
         var data = BuildSaveData();
         if (data == null) return;
         SaveSystem.SaveGame(slotName, data);
@@ -203,6 +276,32 @@ public class DialogueManager : MonoBehaviour
     /// </summary>
     public void LoadProgress(string slotName = "autosave")
     {
+        // 优先从数据库加载
+        if (!string.IsNullOrEmpty(_currentUsername) && DatabaseManager.Instance != null)
+        {
+            var historyData = DatabaseManager.Instance.LoadChatHistory(_currentUsername, slotName);
+            if (historyData != null)
+            {
+                var textAsset = Resources.Load<TextAsset>($"Characters/{historyData.characterName}");
+                if (textAsset != null)
+                {
+                    _activeProfile = CharacterCardParser.ParseFromText(textAsset.text, historyData.characterName);
+                }
+                else
+                {
+                    _activeProfile = ScriptableObject.CreateInstance<CharacterProfile>();
+                    _activeProfile.characterName = historyData.characterName;
+                }
+                
+                this.chatHistory = historyData.chatHistory;
+                ClearUI();
+                RebuildUIFromHistory();
+                Debug.Log($"[DialogueManager] 从数据库加载进度: {historyData.characterName} ({historyData.timestamp})");
+                return;
+            }
+        }
+
+        // 回退到文件加载
         var data = SaveSystem.LoadGame(slotName);
         ApplyLoadedData(data);
     }
@@ -251,16 +350,21 @@ public class DialogueManager : MonoBehaviour
     /// <summary>
     /// 重启当前对话（相当于重新开始游戏）
     /// </summary>
-    public async void RestartChat()
+    public void RestartChat()
     {
-        if (_activeProfile != null)
+        _chatInitialized = false;
+        _chatInitializing = false;
+        _activeProfile = null;
+
+        // 清除数据库中的旧存档
+        if (!string.IsNullOrEmpty(_currentUsername) && DatabaseManager.Instance != null)
         {
-            StartNewChat(_activeProfile);
+            DatabaseManager.Instance.DeleteSaveSlot(_currentUsername, "autosave");
         }
-        else
-        {
-            await InitializeChatHistoryAsync();
-        }
+
+        // 重新从角色卡文件初始化
+        InitializeChatHistory();
+        _chatInitialized = true;
     }
 
     private void ClearUI()
@@ -276,10 +380,10 @@ public class DialogueManager : MonoBehaviour
     {
         if (chatHistory == null) return;
         
-        for (int i = 0; i < chatHistory.Count; i++)
+        // 跳过 [0]=系统消息 和 [1]=开场白，只恢复真正的对话内容
+        for (int i = 2; i < chatHistory.Count; i++)
         {
             var msg = chatHistory[i];
-            if (i == 0) continue; 
 
             string text = "";
             if (msg.parts != null)
@@ -546,6 +650,9 @@ public class DialogueManager : MonoBehaviour
                 }
                 ExecuteCharacterAction(responseData);
                 chatHistory.Add(new ChatMessage { role = "assistant", parts = new List<ChatPart> { new ChatPart { text = finalJson } } });
+                
+                // 自动保存到数据库
+                AutoSaveToDatabase();
             }
             else
             {
@@ -587,6 +694,9 @@ public class DialogueManager : MonoBehaviour
             }
             ExecuteCharacterAction(responseData2);
             chatHistory.Add(new ChatMessage { role = "assistant", parts = new List<ChatPart> { new ChatPart { text = aiResponseJson } } });
+            
+            // 自动保存到数据库
+            AutoSaveToDatabase();
         }
         else
         {
@@ -728,35 +838,32 @@ public class DialogueManager : MonoBehaviour
     /// <summary>
     /// 初始化对话历史，包含系统指令
     /// </summary>
-    private async Task InitializeChatHistoryAsync()
+    private void InitializeChatHistory()
     {
-        // 1. ????????????????
         CharacterProfile profileToUse = null;
 
-        // ?????????????????????????????
+        // 优先使用 Inspector 中拖入的角色卡文件
         if (characterCardFile != null)
         {
-            // ?????????????????????????? Kanari
             string defaultName = characterCardFile.name;
-            profileToUse = await BuildProfileFromCardAsync(characterCardFile, defaultName);
+            profileToUse = CharacterCardParser.ParseFromText(characterCardFile.text, defaultName);
         }
 
-        // ???????????????????????????
+        // 如果没有配置角色卡，从 Resources 加载默认的
         if (profileToUse == null)
         {
-            // ??????????? Resources/Characters/Kanari
             var defaultFile = Resources.Load<TextAsset>("Characters/Kanari");
             if (defaultFile != null)
             {
-                profileToUse = await BuildProfileFromCardAsync(defaultFile, "Kanari");
+                profileToUse = CharacterCardParser.ParseFromText(defaultFile.text, "Kanari");
             }
             else
             {
                 profileToUse = ScriptableObject.CreateInstance<CharacterProfile>();
                 profileToUse.characterName = "Kanari";
                 profileToUse.userName = "User";
-                profileToUse.persona = "??????????\"Kanari\"?????????????????????????????????档";
-                profileToUse.openingMessage = "??????????Kanari????????????";
+                profileToUse.persona = "你是一个名为\"Kanari\"的虚拟少女，性格活泼可爱，对世界充满好奇。";
+                profileToUse.openingMessage = "你好呀！我是Kanari，很高兴见到你！";
             }
         }
 
@@ -766,12 +873,9 @@ public class DialogueManager : MonoBehaviour
     private Task<CharacterProfile> BuildProfileFromCardAsync(TextAsset cardFile, string defaultName)
     {
         if (cardFile == null) return Task.FromResult<CharacterProfile>(null);
-        return CharacterCardParser.ParseFromTextWithAI(cardFile.text, defaultName);
+        return Task.FromResult(CharacterCardParser.ParseFromText(cardFile.text, defaultName));
     }
 
-    /// <summary>
-    /// 开启一个新的对话会话
-    /// </summary>
     private void EnsureProfileDefaults(CharacterProfile profile)
     {
         if (profile == null) return;
@@ -789,42 +893,26 @@ public class DialogueManager : MonoBehaviour
 
     public void StartNewChat(CharacterProfile profileToUse)
     {
-        // 兜底：如果传入为空，创建默认配置
         if (profileToUse == null)
         {
             profileToUse = ScriptableObject.CreateInstance<CharacterProfile>();
             profileToUse.characterName = "Kanari";
         }
-
-        // 填充缺省字段，保证开场白存在
         EnsureProfileDefaults(profileToUse);
 
-        // 保证关键字段不为空
         string personaSafe = string.IsNullOrEmpty(profileToUse.persona) ? "" : profileToUse.persona;
         string openingSafe = string.IsNullOrEmpty(profileToUse.openingMessage) ? "" : profileToUse.openingMessage;
         string userSafe = string.IsNullOrEmpty(profileToUse.userName) ? "User" : profileToUse.userName;
         string charSafe = string.IsNullOrEmpty(profileToUse.characterName) ? "Kanari" : profileToUse.characterName;
 
         _activeProfile = profileToUse;
-
-        // 2. 处理占位符 {{char}} 和 {{user}}
         string charName = charSafe;
         string userName = userSafe;
 
-        string processedPersona = personaSafe
-            .Replace("{{char}}", charName)
-            .Replace("{{user}}", userName);
-            
-        string processedOpening = openingSafe
-            .Replace("{{char}}", charName)
-            .Replace("{{user}}", userName);
+        string processedPersona = personaSafe.Replace("{{char}}", charName).Replace("{{user}}", userName);
+        string processedOpening = openingSafe.Replace("{{char}}", charName).Replace("{{user}}", userName);
 
-        // 3. 构建系统提示词 (System Prompt)
-        // 将角色人设与 JSON 格式要求合并
         string systemPrompt = BuildSystemPrompt(charName, processedPersona);
-
-        // 4. 构建第一条消息 (Assistant Opening)
-        // 需要封装成 JSON 格式
         string firstMessageJson = BuildFirstMessageJson(processedOpening);
 
         chatHistory = new List<ChatMessage>
@@ -832,12 +920,9 @@ public class DialogueManager : MonoBehaviour
             new ChatMessage { role = "user", parts = new List<ChatPart> { new ChatPart { text = systemPrompt } } },
             new ChatMessage { role = "assistant", parts = new List<ChatPart> { new ChatPart { text = firstMessageJson } } }
         };
-        
-        // 清理并显示开场白
+
         ClearUI();
         AddMessageToUI(processedOpening, false);
-        
-        // 执行开场动作
         ExecuteCharacterAction(new AIResponseData { dialogue = processedOpening, emotion = "Smile", action = "Hello" });
     }
 
@@ -853,20 +938,14 @@ public class DialogueManager : MonoBehaviour
 
     private string BuildFirstMessageJson(string dialogue)
     {
-        // 简单的转义处理，防止破坏 JSON 结构
         string escapedDialogue = dialogue
-            .Replace("\\", "\\\\") // 先转义反斜杠
-            .Replace("\"", "\\\"") // 转义双引号
-            .Replace("\n", "\\n")  // 转义换行
-            .Replace("\r", "");    // 移除回车
-
-        // 返回合法的 JSON 字符串（注意：这里用 \" 而不是 \\\"）
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("\n", "\\n")
+            .Replace("\r", "");
         return "{\"dialogue\":\"" + escapedDialogue + "\",\"emotion\":\"Smile\",\"action\":\"Hello\"}";
     }
 
-    /// <summary>
-    /// 在UI上创建并显示一个新的消息气泡
-    /// </summary>
     private MessageBubble AddMessageToUI(string message, bool isUserMessage)
     {
         if (chatContainer == null)
@@ -883,22 +962,18 @@ public class DialogueManager : MonoBehaviour
             return null;
         }
 
-        // 创建行容器
         GameObject rowContainer = new GameObject(isUserMessage ? "UserMessageRow" : "AIMessageRow");
         rowContainer.transform.SetParent(chatContainer, false);
-        
         var rowRect = rowContainer.AddComponent<RectTransform>();
-        
         var rowLayout = rowContainer.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
-        rowLayout.childControlWidth = false;  // 让气泡自己控制大小
-        rowLayout.childControlHeight = false; // 让气泡自己控制大小
+        rowLayout.childControlWidth = false;
+        rowLayout.childControlHeight = false;
         rowLayout.childForceExpandWidth = false;
         rowLayout.childForceExpandHeight = false;
         rowLayout.spacing = 0;
         rowLayout.padding = new RectOffset(0, 0, 0, 0);
         rowLayout.childAlignment = TextAnchor.UpperLeft;
 
-        // 创建气泡
         GameObject newBubbleObject = Instantiate(messagePrefab, rowContainer.transform);
         if (newBubbleObject == null)
         {
@@ -906,22 +981,17 @@ public class DialogueManager : MonoBehaviour
             return null;
         }
         
-        // 给气泡添加 LayoutElement，设置preferredWidth让它不被拉伸
         var bubbleLayoutElement = newBubbleObject.GetComponent<UnityEngine.UI.LayoutElement>();
         if (bubbleLayoutElement == null)
         {
             bubbleLayoutElement = newBubbleObject.AddComponent<UnityEngine.UI.LayoutElement>();
         }
-        bubbleLayoutElement.flexibleWidth = 0; // 气泡不弹性拉伸
+        bubbleLayoutElement.flexibleWidth = 0;
 
-        // 移除弹性空间，直接靠左对齐
-        // CreateFlexibleSpacer(rowContainer.transform);
-        
         MessageBubble bubbleComponent = newBubbleObject.GetComponent<MessageBubble>();
         if (bubbleComponent != null)
         {
             bubbleComponent.SetText(message);
-            // 强制文本左对齐
             if (bubbleComponent.textComponent != null)
             {
                 bubbleComponent.textComponent.alignment = TextAlignmentOptions.TopLeft;
@@ -932,41 +1002,28 @@ public class DialogueManager : MonoBehaviour
         return bubbleComponent;
     }
 
-    /// <summary>
-    /// 刷新布局并滚动到底部
-    /// </summary>
     private void RefreshLayoutAndScrollToBottom()
     {
-        // 强制刷新布局
         if (chatContainer != null)
         {
             UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(chatContainer as RectTransform);
         }
-
-        // 滚动到底部（延迟一帧执行，确保布局更新完成）
         if (chatScrollRect != null)
         {
             chatScrollRect.verticalNormalizedPosition = 0f;
         }
     }
 
-    /// <summary>
-    /// 解析AI返回的JSON字符串
-    /// </summary>
     private string MaybeUnescapeJson(string s)
     {
         if (string.IsNullOrEmpty(s)) return s;
-
         string trimmed = s.Trim();
-        // 去掉首尾的引号包裹
         if (trimmed.Length > 1 && trimmed.StartsWith("\"") && trimmed.EndsWith("\""))
         {
             trimmed = trimmed.Substring(1, trimmed.Length - 2);
         }
-
         bool looksEscaped = trimmed.Contains("\\\"") || trimmed.StartsWith("\\{") || trimmed.StartsWith("\\[");
         if (!looksEscaped) return trimmed;
-
         try
         {
             return trimmed.Replace("\\\"", "\"")
@@ -975,10 +1032,7 @@ public class DialogueManager : MonoBehaviour
                           .Replace("\\r", "\r")
                           .Replace("\\t", "\t");
         }
-        catch
-        {
-            return trimmed;
-        }
+        catch { return trimmed; }
     }
 
     private AIResponseData ParseAIResponse(string json)
@@ -987,23 +1041,15 @@ public class DialogueManager : MonoBehaviour
         {
             UnityEngine.Debug.Log($"[DialogueManager] 收到AI的原始回复: {json}");
 
-            // 1) 预处理：移除 Markdown 代码块包裹
             string TrimCodeFences(string s)
             {
                 if (string.IsNullOrEmpty(s)) return s;
                 s = s.Trim();
-                if (s.StartsWith("```") )
+                if (s.StartsWith("```"))
                 {
                     int firstNewLine = s.IndexOf('\n');
-                    if (firstNewLine >= 0)
-                    {
-                        // 去掉 ```json 或 `````
-                        s = s.Substring(firstNewLine + 1);
-                    }
-                    if (s.EndsWith("```") )
-                    {
-                        s = s.Substring(0, s.Length - 3);
-                    }
+                    if (firstNewLine >= 0) s = s.Substring(firstNewLine + 1);
+                    if (s.EndsWith("```")) s = s.Substring(0, s.Length - 3);
                     s = s.Trim();
                 }
                 return s;
@@ -1013,39 +1059,25 @@ public class DialogueManager : MonoBehaviour
             candidate = TrimCodeFences(candidate);
             candidate = MaybeUnescapeJson(candidate);
 
-            // 2) 先尝试将顶级解析为 JObject
             AIResponseData TryParseDirect(JToken token)
             {
                 if (token == null) return null;
                 if (token.Type == JTokenType.Object)
                 {
                     var obj = (JObject)token;
-                    // 直接就是 { dialogue, emotion, action }
-                    if (obj["dialogue"] != null)
-                    {
-                        return obj.ToObject<AIResponseData>();
-                    }
+                    if (obj["dialogue"] != null) return obj.ToObject<AIResponseData>();
                 }
                 return null;
             }
 
-            // 顶级 JSON 解析
             JToken rootToken = null;
-            try
-            {
-                rootToken = JToken.Parse(candidate);
-            }
+            try { rootToken = JToken.Parse(candidate); }
             catch
             {
-                // 如果是被转义的字符串，尝试再反转义一次后解析
                 string unescapedCandidate = MaybeUnescapeJson(candidate);
-                try
-                {
-                    rootToken = JToken.Parse(unescapedCandidate);
-                }
+                try { rootToken = JToken.Parse(unescapedCandidate); }
                 catch
                 {
-                    // 顶级不是 JSON 对象，可能是纯字符串里嵌的 JSON
                     int startIndex = candidate.IndexOf('{');
                     int endIndex = candidate.LastIndexOf('}');
                     if (startIndex >= 0 && endIndex > startIndex)
@@ -1057,7 +1089,6 @@ public class DialogueManager : MonoBehaviour
                 }
             }
 
-            // 2a) 如果顶级就是 AIResponseData
             var direct = TryParseDirect(rootToken);
             if (direct != null)
             {
@@ -1065,37 +1096,25 @@ public class DialogueManager : MonoBehaviour
                 return direct;
             }
 
-            // 3) 处理各家模型的包裹格式
             string ExtractContentFromKnownWrappers(JToken token)
             {
                 if (token == null) return null;
-
-                // DeepSeek / OpenAI: choices[0].message.content 或 choices[0].text
                 var content = token["choices"]?[0]?["message"]?["content"]?.Value<string>()
                               ?? token["choices"]?[0]?["text"]?.Value<string>();
                 if (!string.IsNullOrEmpty(content)) return content;
-
-                // Gemini: candidates[0].content.parts[0].text
                 var partText = token["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.Value<string>();
                 if (!string.IsNullOrEmpty(partText)) return partText;
-
-                // Qwen 常见：output_text 或 response 或 data.content
                 var qwen = token["output_text"]?.Value<string>()
                            ?? token["response"]?.Value<string>()
                            ?? token["data"]?["content"]?.Value<string>();
                 if (!string.IsNullOrEmpty(qwen)) return qwen;
-
                 return null;
             }
 
             string innerContent = ExtractContentFromKnownWrappers(rootToken);
             if (!string.IsNullOrEmpty(innerContent))
             {
-                // 可能是被转义的 JSON 字符串，先去掉代码块，再尝试解析
                 string inner = TrimCodeFences(innerContent).Trim();
-
-                // 若是字符串中再包含 JSON（例如带有转义引号），尝试二次解析
-                // 先尝试直接解析
                 try
                 {
                     var innerToken = JToken.Parse(inner);
@@ -1104,12 +1123,7 @@ public class DialogueManager : MonoBehaviour
                 }
                 catch
                 {
-                    // 如果直接解析失败，尝试去除转义再解析
-                    string unescaped = inner
-                        .Replace("\\\"", "\"")
-                        .Replace("\\n", "\n")
-                        .Replace("\\r", "\r");
-
+                    string unescaped = inner.Replace("\\\"", "\"").Replace("\\n", "\n").Replace("\\r", "\r");
                     try
                     {
                         var innerToken2 = JToken.Parse(unescaped);
@@ -1118,20 +1132,11 @@ public class DialogueManager : MonoBehaviour
                     }
                     catch { }
                 }
-
-                // 如果依然不是合法的 JSON，就作为对话文本兜底
-                return new AIResponseData
-                {
-                    dialogue = inner,
-                    emotion = "Default",
-                    action = string.Empty
-                };
+                return new AIResponseData { dialogue = inner, emotion = "Default", action = string.Empty };
             }
 
-            // 4) 兜底：尝试从原始字符串中提取最外层的 JSON 对象再解析
             if (rootToken != null && rootToken.Type == JTokenType.Object)
             {
-                // 在未知结构时，尽可能查找名为 dialogue/emotion/action 的属性
                 var obj = (JObject)rootToken;
                 var data = new AIResponseData
                 {
@@ -1139,10 +1144,7 @@ public class DialogueManager : MonoBehaviour
                     emotion = obj["emotion"]?.Value<string>(),
                     action = obj["action"]?.Value<string>()
                 };
-                if (!string.IsNullOrEmpty(data.dialogue))
-                {
-                    return data;
-                }
+                if (!string.IsNullOrEmpty(data.dialogue)) return data;
             }
 
             UnityEngine.Debug.LogError("[DialogueManager] 在AI的回复中未能找到可用的对话内容！");
@@ -1155,49 +1157,30 @@ public class DialogueManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 根据AI指令执行角色动作和表情
-    /// </summary>
     private void ExecuteCharacterAction(AIResponseData responseData)
     {
         if (live2DController == null) return;
-
         if (System.Enum.TryParse(responseData.emotion, true, out Live2DController.Expression newExpression))
         {
             live2DController.SetExpression(newExpression);
         }
-
         if (!string.IsNullOrEmpty(responseData.action))
         {
             live2DController.PlayActionTrigger(responseData.action);
         }
     }
 
-    /// <summary>
-    /// 查找句子结束位置（用于分句播放TTS）
-    /// </summary>
     private int FindSentenceEnd(string text)
     {
         if (string.IsNullOrEmpty(text)) return -1;
-        
-        // 中文句子结束标记
         char[] chineseEnds = { '。', '！', '？', '；', '\n' };
-        // 英文句子结束标记
         char[] englishEnds = { '.', '!', '?' };
-        
         int lastPos = -1;
-        
-        // 优先查找中文标点
         foreach (char c in chineseEnds)
         {
             int pos = text.IndexOf(c);
-            if (pos >= 0 && (lastPos < 0 || pos < lastPos))
-            {
-                lastPos = pos;
-            }
+            if (pos >= 0 && (lastPos < 0 || pos < lastPos)) lastPos = pos;
         }
-        
-        // 如果没找到中文标点，查找英文标点（后面跟空格或结尾）
         if (lastPos < 0)
         {
             foreach (char c in englishEnds)
@@ -1205,34 +1188,29 @@ public class DialogueManager : MonoBehaviour
                 int pos = text.IndexOf(c);
                 while (pos >= 0)
                 {
-                    // 确保标点后面是空格、换行或字符串结尾
-                    if (pos == text.Length - 1 || 
-                        text[pos + 1] == ' ' || 
-                        text[pos + 1] == '\n' ||
-                        text[pos + 1] == '\r')
+                    if (pos == text.Length - 1 || text[pos + 1] == ' ' || text[pos + 1] == '\n' || text[pos + 1] == '\r')
                     {
-                        if (lastPos < 0 || pos < lastPos)
-                        {
-                            lastPos = pos;
-                        }
+                        if (lastPos < 0 || pos < lastPos) lastPos = pos;
                         break;
                     }
                     pos = text.IndexOf(c, pos + 1);
                 }
             }
         }
-        
-        // 如果文本很长但没有标点，按逗号或固定长度分割
         if (lastPos < 0 && text.Length > 30)
         {
             int commaPos = text.IndexOf('，');
             if (commaPos < 0) commaPos = text.IndexOf(',');
-            if (commaPos >= 15) // 至少15个字符后的逗号
-            {
-                return commaPos;
-            }
+            if (commaPos >= 15) return commaPos;
         }
-        
         return lastPos;
+    }
+
+    private void AutoSaveToDatabase()
+    {
+        if (string.IsNullOrEmpty(_currentUsername) || DatabaseManager.Instance == null || chatHistory == null)
+            return;
+        string charName = _activeProfile != null ? _activeProfile.characterName : "Unknown";
+        DatabaseManager.Instance.SaveChatHistory(_currentUsername, charName, chatHistory);
     }
 }

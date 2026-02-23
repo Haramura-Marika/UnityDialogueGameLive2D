@@ -68,7 +68,7 @@ namespace AI.Providers
 
             var model = ChatConfig.GetModel("DeepSeek", "deepseek-chat");
             var temperature = ChatConfig.GetTemperature("DeepSeek", 1.0f);
-            var maxTokens = ChatConfig.GetMaxTokens("DeepSeek", 2048);
+            var maxTokens = ChatConfig.GetMaxTokens("DeepSeek", 8192);
 
             var req = new
             {
@@ -138,7 +138,7 @@ namespace AI.Providers
 
             var model = ChatConfig.GetModel("DeepSeek", "deepseek-chat");
             var temperature = ChatConfig.GetTemperature("DeepSeek", 1.0f);
-            var maxTokens = ChatConfig.GetMaxTokens("DeepSeek", 2048);
+            var maxTokens = ChatConfig.GetMaxTokens("DeepSeek", 8192);
 
             var req = new
             {

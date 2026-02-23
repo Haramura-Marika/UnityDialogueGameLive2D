@@ -69,7 +69,12 @@ namespace AI.Providers
             var envName = GetEnvVarName(serviceProp);
             if (!string.IsNullOrEmpty(envName))
             {
-                var envVal = Environment.GetEnvironmentVariable(envName);
+                // 依次查找 Process、User、Machine 级别
+                var envVal = Environment.GetEnvironmentVariable(envName, EnvironmentVariableTarget.Process);
+                if (string.IsNullOrEmpty(envVal))
+                    envVal = Environment.GetEnvironmentVariable(envName, EnvironmentVariableTarget.User);
+                if (string.IsNullOrEmpty(envVal))
+                    envVal = Environment.GetEnvironmentVariable(envName, EnvironmentVariableTarget.Machine);
                 if (!string.IsNullOrEmpty(envVal)) return envVal;
             }
 

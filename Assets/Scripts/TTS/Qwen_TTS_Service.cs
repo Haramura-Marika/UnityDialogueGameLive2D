@@ -1,12 +1,12 @@
+using AI.Config;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using UnityEngine;
-using AI.Config;
 
 namespace AI.TTS
 {
@@ -27,18 +27,19 @@ namespace AI.TTS
             string voiceId = options?.VoiceId;
             string languageType = options?.LanguageType;
 
-            if (string.IsNullOrEmpty(apiKey))
+            // 始终从配置中补全未指定的参数
+            var config = AIAPISettings.Instance?.QwenTTS;
+            if (config != null)
             {
-                if (AIAPISettings.Instance == null || !AIAPISettings.Instance.QwenTTS.IsConfigured())
+                if (string.IsNullOrEmpty(apiKey))
                 {
-                    Debug.LogWarning("[Qwen TTS] API Key 未配置，请到 Resources/APISettings 中设置。");
-                    return;
+                    if (!config.IsConfigured())
+                    {
+                        Debug.LogWarning("[Qwen TTS] API Key 未配置，请到 Resources/APISettings 中设置。");
+                        return;
+                    }
+                    apiKey = config.ApiKey;
                 }
-                
-                var config = AIAPISettings.Instance.QwenTTS;
-                apiKey = config.ApiKey;
-                
-                // 如果没有指定 voice 和 language，使用配置中的默认值
                 if (string.IsNullOrEmpty(voiceId))
                     voiceId = config.VoiceId;
                 if (string.IsNullOrEmpty(languageType))
@@ -51,18 +52,38 @@ namespace AI.TTS
                 return;
             }
 
+            // 提取出实际要使用的参数变量
+            string actualVoice = string.IsNullOrEmpty(voiceId) ? "Cherry" : voiceId;
+            string actualLanguage = string.IsNullOrEmpty(languageType) ? "Chinese" : languageType;
+
+            // 核心修改：采用多模态大模型的标准 Messages 数组结构，并将参数移入 parameters
             var body = new
             {
-                model = AIAPISettings.Instance?.QwenTTS?.Model ?? "qwen3-tts-flash",
+                model = config?.Model ?? "qwen3-tts-flash",
                 input = new
                 {
-                    text = text,
-                    voice = string.IsNullOrEmpty(voiceId) ? "Cherry" : voiceId,
-                    language_type = string.IsNullOrEmpty(languageType) ? "Chinese" : languageType
+                    messages = new[]
+                    {
+                        new
+                        {
+                            role = "user",
+                            content = new[]
+                            {
+                                new { text = text }
+                            }
+                        }
+                    }
+                },
+                parameters = new
+                {
+                    voice = actualVoice,
+                    language_type = actualLanguage,
+                    format = "pcm",          // 强制返回 pcm 裸流，避免处理 wav 头
+                    sample_rate = 16000      // 确保采样率固定，方便 Unity 端处理
                 }
             };
 
-            Debug.Log($"[Qwen TTS] 开始合成 - 文本长度: {text?.Length ?? 0}, 声音: {body.input.voice}, 语言: {body.input.language_type}");
+            Debug.Log($"[Qwen TTS] 开始合成 - 文本长度: {text?.Length ?? 0}, 声音: {actualVoice}, 语言: {actualLanguage}");
 
             var req = new HttpRequestMessage(HttpMethod.Post, apiUrl);
             req.Headers.Add("Authorization", $"Bearer {apiKey}");
@@ -110,7 +131,7 @@ namespace AI.TTS
                                 if (rawBytes != null && rawBytes.Length > 0)
                                 {
                                     byte[] pcm = rawBytes;
-                                    // 如果是 WAV，提取data块
+                                    // 如果依然返回了 WAV（做个兜底兼容），提取data块
                                     if (IsWav(rawBytes))
                                     {
                                         var wavPcm = TryExtractPcmFromWav(rawBytes);
@@ -118,7 +139,7 @@ namespace AI.TTS
                                     }
                                     onPcmChunk?.Invoke(pcm);
 
-                                    // 可选：检查返回采样率是否和当前播放器匹配，可反馈警告
+                                    // 检查返回采样率是否和预期匹配
                                     if (sampleRate.HasValue && sampleRate.Value != 16000)
                                     {
                                         Debug.LogWarning($"[Qwen TTS] 返回采样率为 {sampleRate.Value}Hz，与当前播放器(16000Hz)不一致，可能导致变调。");
@@ -132,7 +153,7 @@ namespace AI.TTS
                         }
                     }
                 }
-                
+
                 Debug.Log("[Qwen TTS] 合成完成");
             }
             catch (TaskCanceledException)
@@ -209,6 +230,10 @@ namespace AI.TTS
                     // chunk id + size
                     string chunkId = Encoding.ASCII.GetString(wav, i, 4);
                     int size = BitConverter.ToInt32(wav, i + 4);
+
+                    // 【核心修复】：增加死循环保护，如果解析出非法 size，直接跳出
+                    if (size <= 0) break;
+
                     int dataStart = i + 8;
                     if (chunkId == "data")
                     {

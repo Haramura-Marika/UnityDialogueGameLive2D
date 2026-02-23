@@ -1,5 +1,5 @@
-using UnityEngine;
 using System;
+using UnityEngine;
 
 namespace AI.Config
 {
@@ -20,10 +20,15 @@ namespace AI.Config
         {
             get
             {
-                // 優先從環境變量讀取
+                // 优先从环境变量读取
                 if (!string.IsNullOrEmpty(EnvVarName))
                 {
-                    var envValue = System.Environment.GetEnvironmentVariable(EnvVarName);
+                    // 依次查找 Process、User、Machine 级别
+                    var envValue = System.Environment.GetEnvironmentVariable(EnvVarName, EnvironmentVariableTarget.Process);
+                    if (string.IsNullOrEmpty(envValue))
+                        envValue = System.Environment.GetEnvironmentVariable(EnvVarName, EnvironmentVariableTarget.User);
+                    if (string.IsNullOrEmpty(envValue))
+                        envValue = System.Environment.GetEnvironmentVariable(EnvVarName, EnvironmentVariableTarget.Machine);
                     if (!string.IsNullOrEmpty(envValue))
                     {
                         return envValue;
@@ -50,7 +55,7 @@ namespace AI.Config
 
         [SerializeField] private string model = "deepseek-chat";
         [SerializeField] [Range(0f, 2f)] private float temperature = 1.0f;
-        [SerializeField] private int maxTokens = 2048;
+        [SerializeField] private int maxTokens = 8192;
         [SerializeField] private bool streamingEnabled = false; // 是否流式输出
 
         public string Model
@@ -128,7 +133,7 @@ namespace AI.Config
 
         [SerializeField] private string model = "qwen-plus";
         [SerializeField] [Range(0f, 2f)] private float temperature = 1.0f;
-        [SerializeField] private int maxTokens = 2048;
+        [SerializeField] private int maxTokens = 8192;
         [SerializeField] private bool streamingEnabled = false; // 是否流式输出
 
         public string Model

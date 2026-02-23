@@ -25,39 +25,42 @@ namespace AI.Chat
 
             if (string.IsNullOrEmpty(text)) return profile;
 
-            // 简单的解析逻辑：查找关键词分割
-            // 格式：
-            // 角色描述：
-            // ...
-            // 第一条消息开场白：
-            // ...
-
+            // 查找关键字标记
             string descKey = "角色描述：";
-            string openingKey = "第一条消息开场白：";
+            string openingKey = "第一条消息（开场白）";
 
             int descIndex = text.IndexOf(descKey);
             int openingIndex = text.IndexOf(openingKey);
 
-            if (descIndex != -1)
+            if (descIndex != -1 || openingIndex != -1)
             {
-                int contentStart = descIndex + descKey.Length;
-                int contentEnd = (openingIndex != -1 && openingIndex > contentStart) ? openingIndex : text.Length;
-                profile.persona = text.Substring(contentStart, contentEnd - contentStart).Trim();
-            }
+                // 带标记的格式（如 ArtStudent.txt）
+                if (descIndex != -1)
+                {
+                    int contentStart = descIndex + descKey.Length;
+                    int contentEnd = (openingIndex != -1 && openingIndex > contentStart) ? openingIndex : text.Length;
+                    profile.persona = text.Substring(contentStart, contentEnd - contentStart).Trim();
+                }
 
-            if (openingIndex != -1)
-            {
-                int contentStart = openingIndex + openingKey.Length;
-                profile.openingMessage = text.Substring(contentStart).Trim();
+                if (openingIndex != -1)
+                {
+                    int contentStart = openingIndex + openingKey.Length;
+                    profile.openingMessage = text.Substring(contentStart).Trim();
+                }
             }
             else
             {
-                // 如果没有找到开场白标记，但有描述标记，可能剩下的都是描述？
-                // 或者如果两个标记都没找到，整个文本作为描述
-                if (descIndex == -1)
-                {
-                    profile.persona = text.Trim();
-                }
+                // 简单多行格式（如 Kanari.txt）
+                // 第1行=角色名, 第2行=用户名, 第3行=人设, 第4行=开场白
+                var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                if (lines.Length >= 1 && !string.IsNullOrWhiteSpace(lines[0]))
+                    profile.characterName = lines[0].Trim();
+                if (lines.Length >= 2 && !string.IsNullOrWhiteSpace(lines[1]))
+                    profile.userName = lines[1].Trim();
+                if (lines.Length >= 3 && !string.IsNullOrWhiteSpace(lines[2]))
+                    profile.persona = lines[2].Trim();
+                if (lines.Length >= 4 && !string.IsNullOrWhiteSpace(lines[3]))
+                    profile.openingMessage = lines[3].Trim();
             }
 
             return profile;

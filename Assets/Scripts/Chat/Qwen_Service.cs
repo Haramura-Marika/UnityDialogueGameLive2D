@@ -66,7 +66,7 @@ namespace AI.Providers
 
             var model = ChatConfig.GetModel("Qwen", "qwen-plus");
             var temperature = ChatConfig.GetTemperature("Qwen", 1.0f);
-            var maxTokens = ChatConfig.GetMaxTokens("Qwen", 2048);
+            var maxTokens = ChatConfig.GetMaxTokens("Qwen", 8192);
 
             var reqBody = new
             {
@@ -126,7 +126,7 @@ namespace AI.Providers
             var messages = BuildMessages(chatHistory);
             var model = ChatConfig.GetModel("Qwen", "qwen-plus");
             var temperature = ChatConfig.GetTemperature("Qwen", 1.0f);
-            var maxTokens = ChatConfig.GetMaxTokens("Qwen", 2048);
+            var maxTokens = ChatConfig.GetMaxTokens("Qwen", 8192);
 
             var reqBody = new
             {

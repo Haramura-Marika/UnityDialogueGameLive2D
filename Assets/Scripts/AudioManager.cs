@@ -11,7 +11,7 @@ public class AudioManager : MonoBehaviour
     public enum TTSProviderType { Minimax, Qwen /*, Future: Azure, ElevenLabs, etc.*/ }
 
     [Header("TTS Provider 选择")]
-    [SerializeField] private TTSProviderType providerType = TTSProviderType.Minimax;
+    [SerializeField] private TTSProviderType providerType = TTSProviderType.Qwen;
 
     // 注意：API Key 现已移至 Resources/APISettings 配置文件中管理
     // 不再需要在每个 Manager 中单独配置
