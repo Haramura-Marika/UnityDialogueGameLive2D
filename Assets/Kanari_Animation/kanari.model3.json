@@ -1,0 +1,61 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "Kanari.moc3",
+		"Textures": [
+			"Kanari.2048/texture_00.png"
+		],
+		"Physics": "Kanari.physics3.json",
+		"DisplayInfo": "Kanari.cdi3.json",
+		"Motions": {
+			"": [
+				{
+					"File": "motions/01_Idle.motion3.json"
+				},
+				{
+					"File": "motions/02_Proud_Animation.motion3.json"
+				},
+				{
+					"File": "motions/03_Thinking_Animation.motion3.json"
+				},
+				{
+					"File": "motions/04_Hello_Animation.motion3.json"
+				},
+				{
+					"File": "motions/05_Shy_Animation.motion3.json"
+				},
+				{
+					"File": "motions/06_Default_Exp.motion3.json"
+				},
+				{
+					"File": "motions/07_Proud_Exp.motion3.json"
+				},
+				{
+					"File": "motions/08_Sad_Exp.motion3.json"
+				},
+				{
+					"File": "motions/09_Smile_Exp.motion3.json"
+				},
+				{
+					"File": "motions/10_Angry_Exp.motion3.json"
+				}
+			]
+		}
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": [
+				"ParamEyeROpen",
+				"ParamEyeLOpen"
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		}
+	],
+	"HitAreas": []
+}

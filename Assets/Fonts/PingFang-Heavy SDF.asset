@@ -1,0 +1,370 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!28 &-8158581421217357773
+Texture2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: PingFang-Heavy Atlas
+  m_ImageContentsHash:
+    serializedVersion: 2
+    Hash: 00000000000000000000000000000000
+  m_IsAlphaChannelOptional: 0
+  serializedVersion: 4
+  m_Width: 1
+  m_Height: 1
+  m_CompleteImageSize: 1
+  m_MipsStripped: 0
+  m_TextureFormat: 1
+  m_MipCount: 1
+  m_IsReadable: 1
+  m_IsPreProcessed: 0
+  m_IgnoreMipmapLimit: 1
+  m_MipmapLimitGroupName: 
+  m_StreamingMipmaps: 0
+  m_StreamingMipmapsPriority: 0
+  m_VTOnly: 0
+  m_AlphaIsTransparency: 0
+  m_ImageCount: 1
+  m_TextureDimension: 2
+  m_TextureSettings:
+    serializedVersion: 2
+    m_FilterMode: 1
+    m_Aniso: 1
+    m_MipBias: 0
+    m_WrapU: 0
+    m_WrapV: 0
+    m_WrapW: 0
+  m_LightmapFormat: 0
+  m_ColorSpace: 1
+  m_PlatformBlob: 
+  image data: 1
+  _typelessdata: 00
+  m_StreamData:
+    serializedVersion: 2
+    offset: 0
+    size: 0
+    path: 
+--- !u!21 &-2363792408713816598
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: PingFang-Heavy Atlas Material
+  m_Shader: {fileID: 4800000, guid: 68e6db2ebdc24f95958faec2be5558d6, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BumpMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Cube:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _FaceTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: -8158581421217357773}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _OutlineTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _Ambient: 0.5
+    - _Bevel: 0.5
+    - _BevelClamp: 0
+    - _BevelOffset: 0
+    - _BevelRoundness: 0
+    - _BevelWidth: 0
+    - _BumpFace: 0
+    - _BumpOutline: 0
+    - _ColorMask: 15
+    - _CullMode: 0
+    - _Diffuse: 0.5
+    - _FaceDilate: 0
+    - _FaceUVSpeedX: 0
+    - _FaceUVSpeedY: 0
+    - _GlowInner: 0.05
+    - _GlowOffset: 0
+    - _GlowOuter: 0.05
+    - _GlowPower: 0.75
+    - _GradientScale: 10
+    - _LightAngle: 3.1416
+    - _MaskSoftnessX: 0
+    - _MaskSoftnessY: 0
+    - _OutlineSoftness: 0
+    - _OutlineUVSpeedX: 0
+    - _OutlineUVSpeedY: 0
+    - _OutlineWidth: 0
+    - _PerspectiveFilter: 0.875
+    - _Reflectivity: 10
+    - _ScaleRatioA: 0.9
+    - _ScaleRatioB: 0.73125
+    - _ScaleRatioC: 0.73125
+    - _ScaleX: 1
+    - _ScaleY: 1
+    - _ShaderFlags: 0
+    - _Sharpness: 0
+    - _SpecularPower: 2
+    - _Stencil: 0
+    - _StencilComp: 8
+    - _StencilOp: 0
+    - _StencilReadMask: 255
+    - _StencilWriteMask: 255
+    - _TextureHeight: 1024
+    - _TextureWidth: 1024
+    - _UnderlayDilate: 0
+    - _UnderlayOffsetX: 0
+    - _UnderlayOffsetY: 0
+    - _UnderlaySoftness: 0
+    - _VertexOffsetX: 0
+    - _VertexOffsetY: 0
+    - _WeightBold: 0.75
+    - _WeightNormal: 0
+    m_Colors:
+    - _ClipRect: {r: -32767, g: -32767, b: 32767, a: 32767}
+    - _EnvMatrixRotation: {r: 0, g: 0, b: 0, a: 0}
+    - _FaceColor: {r: 1, g: 1, b: 1, a: 1}
+    - _GlowColor: {r: 0, g: 1, b: 0, a: 0.5}
+    - _MaskCoord: {r: 0, g: 0, b: 32767, a: 32767}
+    - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _ReflectFaceColor: {r: 0, g: 0, b: 0, a: 1}
+    - _ReflectOutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
+    - _UnderlayColor: {r: 0, g: 0, b: 0, a: 0.5}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71c1514a6bd24e1e882cebbe1904ce04, type: 3}
+  m_Name: PingFang-Heavy SDF
+  m_EditorClassIdentifier: 
+  m_Version: 1.1.0
+  m_FaceInfo:
+    m_FaceIndex: 0
+    m_FamilyName: PingFang SC
+    m_StyleName: Heavy
+    m_PointSize: 90
+    m_Scale: 1
+    m_UnitsPerEM: 1000
+    m_LineHeight: 126.00001
+    m_AscentLine: 95.4
+    m_CapLine: 65
+    m_MeanLine: 47
+    m_Baseline: 0
+    m_DescentLine: -30.6
+    m_SuperscriptOffset: 95.4
+    m_SuperscriptSize: 0.5
+    m_SubscriptOffset: -30.6
+    m_SubscriptSize: 0.5
+    m_UnderlineOffset: -13.14
+    m_UnderlineThickness: 8.280001
+    m_StrikethroughOffset: 18.8
+    m_StrikethroughThickness: 8.280001
+    m_TabWidth: 30
+  m_Material: {fileID: -2363792408713816598}
+  m_SourceFontFileGUID: f8a74f0f45a47834085b4919629aaba6
+  m_CreationSettings:
+    sourceFontFileName: 
+    sourceFontFileGUID: f8a74f0f45a47834085b4919629aaba6
+    faceIndex: 0
+    pointSizeSamplingMode: 0
+    pointSize: 90
+    padding: 9
+    paddingMode: 2
+    packingMode: 0
+    atlasWidth: 1024
+    atlasHeight: 1024
+    characterSetSelectionMode: 7
+    characterSequence: 
+    referencedFontAssetGUID: 
+    referencedTextAssetGUID: 
+    fontStyle: 0
+    fontStyleModifier: 0
+    renderMode: 4165
+    includeFontFeatures: 0
+  m_SourceFontFile: {fileID: 12800000, guid: f8a74f0f45a47834085b4919629aaba6, type: 3}
+  m_SourceFontFilePath: 
+  m_AtlasPopulationMode: 1
+  InternalDynamicOS: 0
+  m_GlyphTable: []
+  m_CharacterTable: []
+  m_AtlasTextures:
+  - {fileID: -8158581421217357773}
+  m_AtlasTextureIndex: 0
+  m_IsMultiAtlasTexturesEnabled: 0
+  m_GetFontFeatures: 1
+  m_ClearDynamicDataOnBuild: 1
+  m_AtlasWidth: 1024
+  m_AtlasHeight: 1024
+  m_AtlasPadding: 9
+  m_AtlasRenderMode: 4165
+  m_UsedGlyphRects: []
+  m_FreeGlyphRects:
+  - m_X: 0
+    m_Y: 0
+    m_Width: 1023
+    m_Height: 1023
+  m_FontFeatureTable:
+    m_MultipleSubstitutionRecords: []
+    m_LigatureSubstitutionRecords:
+    - m_ComponentGlyphIDs: 440000001200000046000000
+      m_LigatureGlyphID: 42157
+    - m_ComponentGlyphIDs: 4400000050000000
+      m_LigatureGlyphID: 42158
+    - m_ComponentGlyphIDs: 440000001200000052000000
+      m_LigatureGlyphID: 547
+    - m_ComponentGlyphIDs: 2400000030000000
+      m_LigatureGlyphID: 42155
+    - m_ComponentGlyphIDs: 1400000011000000
+      m_LigatureGlyphID: 638
+    - m_ComponentGlyphIDs: 140000000f000000
+      m_LigatureGlyphID: 41702
+    - m_ComponentGlyphIDs: 1400000069110000
+      m_LigatureGlyphID: 41114
+    - m_ComponentGlyphIDs: 140000001300000069110000
+      m_LigatureGlyphID: 41123
+    - m_ComponentGlyphIDs: 140000001400000069110000
+      m_LigatureGlyphID: 41124
+    - m_ComponentGlyphIDs: 140000001500000069110000
+      m_LigatureGlyphID: 41125
+    - m_ComponentGlyphIDs: 140000001600000069110000
+      m_LigatureGlyphID: 41126
+    - m_ComponentGlyphIDs: 140000001700000069110000
+      m_LigatureGlyphID: 41127
+    - m_ComponentGlyphIDs: 140000001800000069110000
+      m_LigatureGlyphID: 41128
+    - m_ComponentGlyphIDs: 140000001900000069110000
+      m_LigatureGlyphID: 41129
+    - m_ComponentGlyphIDs: 140000001a00000069110000
+      m_LigatureGlyphID: 41130
+    - m_ComponentGlyphIDs: 140000001b00000069110000
+      m_LigatureGlyphID: 41131
+    - m_ComponentGlyphIDs: 140000001c00000069110000
+      m_LigatureGlyphID: 41132
+    - m_ComponentGlyphIDs: 140000004c0e0000
+      m_LigatureGlyphID: 41138
+    - m_ComponentGlyphIDs: 14000000130000004c0e0000
+      m_LigatureGlyphID: 41147
+    - m_ComponentGlyphIDs: 14000000140000004c0e0000
+      m_LigatureGlyphID: 41148
+    - m_ComponentGlyphIDs: 14000000150000004c0e0000
+      m_LigatureGlyphID: 41149
+    - m_ComponentGlyphIDs: 14000000ed0d0000
+      m_LigatureGlyphID: 41150
+    - m_ComponentGlyphIDs: 1400000013000000ed0d0000
+      m_LigatureGlyphID: 41159
+    - m_ComponentGlyphIDs: 1400000014000000ed0d0000
+      m_LigatureGlyphID: 41160
+    - m_ComponentGlyphIDs: 1400000015000000ed0d0000
+      m_LigatureGlyphID: 41161
+    - m_ComponentGlyphIDs: 1400000016000000ed0d0000
+      m_LigatureGlyphID: 41162
+    - m_ComponentGlyphIDs: 1400000017000000ed0d0000
+      m_LigatureGlyphID: 41163
+    - m_ComponentGlyphIDs: 1400000018000000ed0d0000
+      m_LigatureGlyphID: 41164
+    - m_ComponentGlyphIDs: 1400000019000000ed0d0000
+      m_LigatureGlyphID: 41165
+    - m_ComponentGlyphIDs: 140000001a000000ed0d0000
+      m_LigatureGlyphID: 41166
+    - m_ComponentGlyphIDs: 140000001b000000ed0d0000
+      m_LigatureGlyphID: 41167
+    - m_ComponentGlyphIDs: 140000001c000000ed0d0000
+      m_LigatureGlyphID: 41168
+    - m_ComponentGlyphIDs: 140000001200000017000000
+      m_LigatureGlyphID: 127
+    - m_ComponentGlyphIDs: 140000001200000015000000
+      m_LigatureGlyphID: 128
+    - m_ComponentGlyphIDs: 140000001200000016000000
+      m_LigatureGlyphID: 368
+    - m_ComponentGlyphIDs: 14000000120000001b000000
+      m_LigatureGlyphID: 370
+    m_GlyphPairAdjustmentRecords: []
+    m_MarkToBaseAdjustmentRecords: []
+    m_MarkToMarkAdjustmentRecords: []
+  m_ShouldReimportFontFeatures: 0
+  m_FallbackFontAssetTable: []
+  m_FontWeightTable:
+  - regularTypeface: {fileID: 0}
+    italicTypeface: {fileID: 0}
+  - regularTypeface: {fileID: 0}
+    italicTypeface: {fileID: 0}
+  - regularTypeface: {fileID: 0}
+    italicTypeface: {fileID: 0}
+  - regularTypeface: {fileID: 0}
+    italicTypeface: {fileID: 0}
+  - regularTypeface: {fileID: 0}
+    italicTypeface: {fileID: 0}
+  - regularTypeface: {fileID: 0}
+    italicTypeface: {fileID: 0}
+  - regularTypeface: {fileID: 0}
+    italicTypeface: {fileID: 0}
+  - regularTypeface: {fileID: 0}
+    italicTypeface: {fileID: 0}
+  - regularTypeface: {fileID: 0}
+    italicTypeface: {fileID: 0}
+  - regularTypeface: {fileID: 0}
+    italicTypeface: {fileID: 0}
+  fontWeights: []
+  normalStyle: 0
+  normalSpacingOffset: 0
+  boldStyle: 0.75
+  boldSpacing: 7
+  italicStyle: 35
+  tabSize: 10
+  m_fontInfo:
+    Name: 
+    PointSize: 0
+    Scale: 0
+    CharacterCount: 0
+    LineHeight: 0
+    Baseline: 0
+    Ascender: 0
+    CapHeight: 0
+    Descender: 0
+    CenterLine: 0
+    SuperscriptOffset: 0
+    SubscriptOffset: 0
+    SubSize: 0
+    Underline: 0
+    UnderlineThickness: 0
+    strikethrough: 0
+    strikethroughThickness: 0
+    TabWidth: 0
+    Padding: 0
+    AtlasWidth: 0
+    AtlasHeight: 0
+  m_glyphInfoList: []
+  m_KerningTable:
+    kerningPairs: []
+  fallbackFontAssets: []
+  atlas: {fileID: 0}

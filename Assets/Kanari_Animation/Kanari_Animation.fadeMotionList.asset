@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 403ae2dd693bb1d4b924f6b8d206b053, type: 3}
+  m_Name: Kanari_Animation.fadeMotionList
+  m_EditorClassIdentifier: 
+  MotionInstanceIds: 4ec0ffff18c0ffff3eacffffc0acffffa6acffff72acffff0aacffff24acffff8cacffff58acffff
+  CubismFadeMotionObjects:
+  - {fileID: 11400000, guid: 8b69403686d37c54cadc821687d89742, type: 2}
+  - {fileID: 11400000, guid: f47f91bf10f8b8c4d8b952d20f98840c, type: 2}
+  - {fileID: 11400000, guid: 671bfb027c326154187946bf1d5f9af2, type: 2}
+  - {fileID: 11400000, guid: 298b6343f0010c940a7e8284eb2e3b31, type: 2}
+  - {fileID: 11400000, guid: 8e51bfec6ab30254ab42bb6e0e73f7c7, type: 2}
+  - {fileID: 11400000, guid: e9ea458ed9453164d977382fcf233590, type: 2}
+  - {fileID: 11400000, guid: 8681c050295f6e74386406e042d87163, type: 2}
+  - {fileID: 11400000, guid: 91674b3623b35924591f57b4eb62e13a, type: 2}
+  - {fileID: 11400000, guid: dafc15c75dc68bc4bbc6516776d1b19d, type: 2}
+  - {fileID: 11400000, guid: 6eef2c149903d8b42aee158ce8fb02db, type: 2}
