@@ -44,7 +44,6 @@ namespace AI.Editor
             DrawConfigStatus("Gemini", manager.Gemini.IsConfigured());
             DrawConfigStatus("Qwen", manager.Qwen.IsConfigured()); // 新增：Qwen 对话配置状态
             DrawConfigStatus("Qwen ASR", manager.QwenASR.IsConfigured());
-            DrawConfigStatus("Qwen TTS", manager.QwenTTS.IsConfigured());
             DrawConfigStatus("Minimax TTS", manager.MinimaxTTS.IsConfigured());
 
             EditorGUILayout.Space(10);
@@ -62,11 +61,6 @@ namespace AI.Editor
                 }
                 if (string.IsNullOrEmpty(key))
                 {
-                    // 再尝试读取 TTS 的 Key
-                    key = manager.QwenTTS.ApiKey;
-                }
-                if (string.IsNullOrEmpty(key))
-                {
                     // 仍为空则让用户选择文本文件
                     string file = EditorUtility.OpenFilePanel("选择包含 API Key 的文本文件", "", "txt");
                     if (!string.IsNullOrEmpty(file))
@@ -79,7 +73,6 @@ namespace AI.Editor
                 {
                     manager.Qwen.ApiKey = key;     // 新增：设置对话 Qwen 的 API Key
                     manager.QwenASR.ApiKey = key;
-                    manager.QwenTTS.ApiKey = key;
                     EditorUtility.SetDirty(manager);
                     Debug.Log("已设置所有 Qwen 服务的 API Key");
                 }

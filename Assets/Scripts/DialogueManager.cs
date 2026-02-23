@@ -838,7 +838,7 @@ public class DialogueManager : MonoBehaviour
     /// <summary>
     /// 初始化对话历史，包含系统指令
     /// </summary>
-    private void InitializeChatHistory()
+    private async void InitializeChatHistory()
     {
         CharacterProfile profileToUse = null;
 
@@ -846,7 +846,7 @@ public class DialogueManager : MonoBehaviour
         if (characterCardFile != null)
         {
             string defaultName = characterCardFile.name;
-            profileToUse = CharacterCardParser.ParseFromText(characterCardFile.text, defaultName);
+            profileToUse = await CharacterCardParser.ParseFromTextWithAI(characterCardFile.text, defaultName);
         }
 
         // 如果没有配置角色卡，从 Resources 加载默认的
@@ -855,7 +855,7 @@ public class DialogueManager : MonoBehaviour
             var defaultFile = Resources.Load<TextAsset>("Characters/Kanari");
             if (defaultFile != null)
             {
-                profileToUse = CharacterCardParser.ParseFromText(defaultFile.text, "Kanari");
+                profileToUse = await CharacterCardParser.ParseFromTextWithAI(defaultFile.text, "Kanari");
             }
             else
             {
@@ -870,10 +870,10 @@ public class DialogueManager : MonoBehaviour
         StartNewChat(profileToUse);
     }
 
-    private Task<CharacterProfile> BuildProfileFromCardAsync(TextAsset cardFile, string defaultName)
+    private async Task<CharacterProfile> BuildProfileFromCardAsync(TextAsset cardFile, string defaultName)
     {
-        if (cardFile == null) return Task.FromResult<CharacterProfile>(null);
-        return Task.FromResult(CharacterCardParser.ParseFromText(cardFile.text, defaultName));
+        if (cardFile == null) return null;
+        return await CharacterCardParser.ParseFromTextWithAI(cardFile.text, defaultName);
     }
 
     private void EnsureProfileDefaults(CharacterProfile profile)

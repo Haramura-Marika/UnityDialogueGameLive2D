@@ -18,7 +18,6 @@ namespace AI.Providers
                 case "Gemini": return "GEMINI_API_KEY";
                 case "Qwen": return "QWEN_API_KEY";
                 case "QwenASR": return "QWEN_ASR_API_KEY";
-                case "QwenTTS": return "QWEN_TTS_API_KEY";
                 case "MinimaxTTS": return "MINIMAX_API_KEY";
                 default: return null;
             }

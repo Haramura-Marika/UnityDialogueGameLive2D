@@ -8,10 +8,10 @@ using AI.TTS;
 [RequireComponent(typeof(AudioSource))]
 public class AudioManager : MonoBehaviour
 {
-    public enum TTSProviderType { Minimax, Qwen /*, Future: Azure, ElevenLabs, etc.*/ }
+    public enum TTSProviderType { Minimax /*, Future: Azure, ElevenLabs, etc.*/ }
 
     [Header("TTS Provider 选择")]
-    [SerializeField] private TTSProviderType providerType = TTSProviderType.Qwen;
+    [SerializeField] private TTSProviderType providerType = TTSProviderType.Minimax;
 
     // 注意：API Key 现已移至 Resources/APISettings 配置文件中管理
     // 不再需要在每个 Manager 中单独配置
@@ -41,12 +41,6 @@ public class AudioManager : MonoBehaviour
         {
             switch (providerType)
             {
-                case TTSProviderType.Qwen:
-                    if (AI.Config.AIAPISettings.Instance.QwenTTS.IsConfigured())
-                        Debug.Log("[AudioManager] ? Qwen TTS 配置已加载");
-                    else
-                        Debug.LogWarning("[AudioManager] ?? Qwen TTS 未配置！");
-                    break;
                 case TTSProviderType.Minimax:
                     if (AI.Config.AIAPISettings.Instance.MinimaxTTS.IsConfigured())
                         Debug.Log("[AudioManager] ? Minimax TTS 配置已加载");
@@ -65,9 +59,6 @@ public class AudioManager : MonoBehaviour
     {
         switch (providerType)
         {
-            case TTSProviderType.Qwen:
-                provider = new QwenTTSProvider();
-                break;
             case TTSProviderType.Minimax:
             default:
                 provider = new MinimaxTTSProvider();

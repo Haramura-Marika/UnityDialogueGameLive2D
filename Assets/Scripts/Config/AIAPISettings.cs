@@ -194,44 +194,6 @@ namespace AI.Config
     }
 
     /// <summary>
-    /// Qwen TTS (”Ô“Ù∫œ≥…) ≈‰÷√
-    /// </summary>
-    [Serializable]
-    public class QwenTTSConfig : APIConfigBase
-    {
-        protected override string EnvVarName => "QWEN_TTS_API_KEY";
-
-        [SerializeField] private string model = "qwen3-tts-flash";
-        [SerializeField] private string voiceId = "Cherry";
-        [SerializeField] private string languageType = "Chinese";
-        [SerializeField] private int sampleRate = 16000;
-
-        public string Model
-        {
-            get => model;
-            set => model = value;
-        }
-
-        public string VoiceId
-        {
-            get => voiceId;
-            set => voiceId = value;
-        }
-
-        public string LanguageType
-        {
-            get => languageType;
-            set => languageType = value;
-        }
-
-        public int SampleRate
-        {
-            get => sampleRate;
-            set => sampleRate = value;
-        }
-    }
-
-    /// <summary>
     /// Minimax TTS ≈‰÷√
     /// </summary>
     [Serializable]
@@ -296,9 +258,6 @@ namespace AI.Config
         [Header("=== Qwen ASR (”Ô“Ù ∂±) ≈‰÷√ ===")]
         [SerializeField] private QwenASRConfig qwenASRConfig = new QwenASRConfig();
 
-        [Header("=== Qwen TTS (”Ô“Ù∫œ≥…) ≈‰÷√ ===")]
-        [SerializeField] private QwenTTSConfig qwenTTSConfig = new QwenTTSConfig();
-
         [Header("=== Minimax TTS ≈‰÷√ ===")]
         [SerializeField] private MinimaxTTSConfig minimaxTTSConfig = new MinimaxTTSConfig();
 
@@ -329,7 +288,6 @@ namespace AI.Config
         public GeminiConfig Gemini => geminiConfig;
         public QwenConfig Qwen => qwenConfig;
         public QwenASRConfig QwenASR => qwenASRConfig;
-        public QwenTTSConfig QwenTTS => qwenTTSConfig;
         public MinimaxTTSConfig MinimaxTTS => minimaxTTSConfig;
 
         /// <summary>
@@ -342,7 +300,6 @@ namespace AI.Config
             Debug.Log($"Gemini: {(geminiConfig.IsConfigured() ? "“—≈‰÷√" : "Œ¥≈‰÷√")}");
             Debug.Log($"Qwen: {(qwenConfig.IsConfigured() ? "“—≈‰÷√" : "Œ¥≈‰÷√")}");
             Debug.Log($"Qwen ASR: {(qwenASRConfig.IsConfigured() ? "“—≈‰÷√" : "Œ¥≈‰÷√")}");
-            Debug.Log($"Qwen TTS: {(qwenTTSConfig.IsConfigured() ? "“—≈‰÷√" : "Œ¥≈‰÷√")}");
             Debug.Log($"Minimax TTS: {(minimaxTTSConfig.IsConfigured() ? "“—≈‰÷√" : "Œ¥≈‰÷√")}");
         }
 
@@ -358,7 +315,6 @@ namespace AI.Config
         {
             string exampleKey = "sk-your-api-key-here";
             qwenASRConfig.ApiKey = exampleKey;
-            qwenTTSConfig.ApiKey = exampleKey;
             UnityEditor.EditorUtility.SetDirty(this);
             Debug.Log("«Î‘⁄ Inspector ÷––ﬁ∏ƒŒ™ µº µƒ API Key");
         }
