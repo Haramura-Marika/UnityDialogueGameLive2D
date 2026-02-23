@@ -377,6 +377,14 @@ public class DialogueManager : MonoBehaviour
         }
 
         if (isWaitingForAI) return;
+        
+        // chatHistory 尚未初始化（Start 中的异步初始化还未完成）
+        if (chatHistory == null)
+        {
+            UnityEngine.Debug.LogWarning("[DialogueManager] chatHistory 尚未初始化，忽略本次消息");
+            return;
+        }
+        
         isWaitingForAI = true;
 
         // 用户发送新消息时，立即打断当前的 TTS
@@ -518,7 +526,10 @@ public class DialogueManager : MonoBehaviour
                     UnityEngine.Debug.Log($"[DialogueManager] 播放剩余文本: {remainingText}");
                     try
                     {
-                        await audioManager.PlayTTS(remainingText, _currentTTSCancellation.Token);
+                        if (audioManager != null && _currentTTSCancellation != null)
+                        {
+                            await audioManager.PlayTTS(remainingText, _currentTTSCancellation.Token);
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -552,10 +563,14 @@ public class DialogueManager : MonoBehaviour
         if (responseData2 != null)
         {
             _currentTTSCancellation = new CancellationTokenSource();
+            var ttsCts = _currentTTSCancellation;
             _isTTSPlaying = true;
             try
             {
-                await audioManager.PlayTTS(responseData2.dialogue, _currentTTSCancellation.Token);
+                if (audioManager != null)
+                {
+                    await audioManager.PlayTTS(responseData2.dialogue, ttsCts.Token);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -595,6 +610,13 @@ public class DialogueManager : MonoBehaviour
             if (!UnityEngine.Application.isPlaying)
             {
                 UnityEngine.Debug.LogWarning("[DialogueManager] 游戏未运行，跳过 TTS 播放");
+                onComplete?.Invoke();
+                return;
+            }
+            
+            if (audioManager == null)
+            {
+                UnityEngine.Debug.LogWarning("[DialogueManager] audioManager 为空，跳过 TTS 播放");
                 onComplete?.Invoke();
                 return;
             }

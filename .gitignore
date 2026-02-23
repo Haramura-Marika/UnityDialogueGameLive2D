@@ -73,3 +73,7 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# API Settings - 包含敏感的 API Key，不要提交到版本控制
+Assets/Resources/APISettings.asset
+Assets/Resources/APISettings.asset.meta

@@ -11,15 +11,32 @@ namespace AI.Config
     {
         [SerializeField] private string apiKey = "";
 
+        /// <summary>
+        /// 用于派生类指定环境变量名称（如 "GEMINI_API_KEY"）
+        /// </summary>
+        protected virtual string EnvVarName => null;
+
         public string ApiKey
         {
-            get => apiKey;
+            get
+            {
+                // 優先從環境變量讀取
+                if (!string.IsNullOrEmpty(EnvVarName))
+                {
+                    var envValue = System.Environment.GetEnvironmentVariable(EnvVarName);
+                    if (!string.IsNullOrEmpty(envValue))
+                    {
+                        return envValue;
+                    }
+                }
+                return apiKey;
+            }
             set => apiKey = value;
         }
 
         public virtual bool IsConfigured()
         {
-            return !string.IsNullOrEmpty(apiKey);
+            return !string.IsNullOrEmpty(ApiKey);
         }
     }
 
@@ -29,6 +46,8 @@ namespace AI.Config
     [Serializable]
     public class DeepSeekConfig : APIConfigBase
     {
+        protected override string EnvVarName => "DEEPSEEK_API_KEY";
+
         [SerializeField] private string model = "deepseek-chat";
         [SerializeField] [Range(0f, 2f)] private float temperature = 1.0f;
         [SerializeField] private int maxTokens = 2048;
@@ -66,6 +85,8 @@ namespace AI.Config
     [Serializable]
     public class GeminiConfig : APIConfigBase
     {
+        protected override string EnvVarName => "GEMINI_API_KEY";
+
         [SerializeField] private string model = "gemini-2.0-flash-exp";
         [SerializeField] [Range(0f, 2f)] private float temperature = 1.0f;
         [SerializeField] private int maxTokens = 8192;
@@ -103,6 +124,8 @@ namespace AI.Config
     [Serializable]
     public class QwenConfig : APIConfigBase
     {
+        protected override string EnvVarName => "QWEN_API_KEY";
+
         [SerializeField] private string model = "qwen-plus";
         [SerializeField] [Range(0f, 2f)] private float temperature = 1.0f;
         [SerializeField] private int maxTokens = 2048;
@@ -140,6 +163,8 @@ namespace AI.Config
     [Serializable]
     public class QwenASRConfig : APIConfigBase
     {
+        protected override string EnvVarName => "QWEN_ASR_API_KEY";
+
         [SerializeField] private string model = "paraformer-realtime-v2";
         [SerializeField] private bool enableLid = true;
         [SerializeField] private bool enableItn = false;
@@ -169,6 +194,8 @@ namespace AI.Config
     [Serializable]
     public class QwenTTSConfig : APIConfigBase
     {
+        protected override string EnvVarName => "QWEN_TTS_API_KEY";
+
         [SerializeField] private string model = "qwen3-tts-flash";
         [SerializeField] private string voiceId = "Cherry";
         [SerializeField] private string languageType = "Chinese";
@@ -205,6 +232,8 @@ namespace AI.Config
     [Serializable]
     public class MinimaxTTSConfig : APIConfigBase
     {
+        protected override string EnvVarName => "MINIMAX_API_KEY";
+
         [SerializeField] private string groupId = "";
         [SerializeField] private string voiceId = "male-qn-qingse";
         [SerializeField] private string model = "speech-02-turbo";

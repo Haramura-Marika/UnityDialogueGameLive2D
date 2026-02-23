@@ -9,6 +9,21 @@ namespace AI.Providers
     /// </summary>
     internal static class ChatConfig
     {
+        // 服务名到环境变量名的映射
+        private static string GetEnvVarName(string serviceProp)
+        {
+            switch (serviceProp)
+            {
+                case "DeepSeek": return "DEEPSEEK_API_KEY";
+                case "Gemini": return "GEMINI_API_KEY";
+                case "Qwen": return "QWEN_API_KEY";
+                case "QwenASR": return "QWEN_ASR_API_KEY";
+                case "QwenTTS": return "QWEN_TTS_API_KEY";
+                case "MinimaxTTS": return "MINIMAX_API_KEY";
+                default: return null;
+            }
+        }
+
         private static Type GetSettingsType()
         {
             try
@@ -43,9 +58,22 @@ namespace AI.Providers
         public static string GetApiKey(string serviceProp)
         {
             var cfg = GetServiceConfig(serviceProp);
-            if (cfg == null) return null;
-            var apiKeyProp = cfg.GetType().GetProperty("ApiKey", BindingFlags.Public | BindingFlags.Instance);
-            return apiKeyProp?.GetValue(cfg, null) as string;
+            if (cfg != null)
+            {
+                var apiKeyProp = cfg.GetType().GetProperty("ApiKey", BindingFlags.Public | BindingFlags.Instance);
+                var val = apiKeyProp?.GetValue(cfg, null) as string;
+                if (!string.IsNullOrEmpty(val)) return val;
+            }
+
+            // ScriptableObject 不存在或其中无 key 时，直接从环境变量读取
+            var envName = GetEnvVarName(serviceProp);
+            if (!string.IsNullOrEmpty(envName))
+            {
+                var envVal = Environment.GetEnvironmentVariable(envName);
+                if (!string.IsNullOrEmpty(envVal)) return envVal;
+            }
+
+            return null;
         }
 
         public static string GetModel(string serviceProp, string @default)
