@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Security.Cryptography;
@@ -8,16 +8,16 @@ public class LoginUIManager : MonoBehaviour
 {
     public static LoginUIManager Instance { get; private set; }
 
-    [Header("ÊäÈë¿ò")]
+    [Header("è¾“å…¥æ¡†")]
     [SerializeField] private TMP_InputField usernameInput;
     [SerializeField] private TMP_InputField passwordInput;
 
-    [Header("°´Å¥")]
+    [Header("æŒ‰é’®")]
     [SerializeField] private Button loginButton;
     [SerializeField] private Button registerButton;
     [SerializeField] private Button backButton;
 
-    [Header("ÌáÊ¾ĞÅÏ¢")]
+    [Header("æç¤ºä¿¡æ¯")]
     [SerializeField] private TMP_Text messageText;
 
     private bool _initialized = false;
@@ -37,10 +37,16 @@ public class LoginUIManager : MonoBehaviour
         if (!_initialized)
         {
             if (loginButton != null)
+            {
                 loginButton.onClick.AddListener(OnLoginClicked);
+                AddButtonEffect(loginButton);
+            }
 
             if (registerButton != null)
+            {
                 registerButton.onClick.AddListener(OnRegisterClicked);
+                AddButtonEffect(registerButton);
+            }
 
             if (backButton != null)
                 backButton.onClick.AddListener(OnBackClicked);
@@ -52,6 +58,14 @@ public class LoginUIManager : MonoBehaviour
             messageText.text = string.Empty;
     }
 
+    private void AddButtonEffect(Button button)
+    {
+        if (button.GetComponent<UIButtonEffect>() == null)
+        {
+            button.gameObject.AddComponent<UIButtonEffect>();
+        }
+    }
+
     private void OnLoginClicked()
     {
         string username = usernameInput != null ? usernameInput.text.Trim() : string.Empty;
@@ -59,13 +73,13 @@ public class LoginUIManager : MonoBehaviour
 
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
         {
-            ShowMessage("ÓÃ»§ÃûºÍÃÜÂë²»ÄÜÎª¿Õ", Color.red);
+            ShowMessage("ç”¨æˆ·åå’Œå¯†ç ä¸èƒ½ä¸ºç©º", Color.red);
             return;
         }
 
         if (!DatabaseManager.Instance.UserExists(username))
         {
-            ShowMessage("ÓÃ»§²»´æÔÚ£¬ÇëÏÈ×¢²á", Color.red);
+            ShowMessage("ç”¨æˆ·ä¸å­˜åœ¨ï¼Œè¯·å…ˆæ³¨å†Œ", Color.red);
             return;
         }
 
@@ -73,21 +87,21 @@ public class LoginUIManager : MonoBehaviour
 
         if (!DatabaseManager.Instance.ValidateUser(username, inputPasswordHash))
         {
-            ShowMessage("ÃÜÂë´íÎó", Color.red);
+            ShowMessage("å¯†ç é”™è¯¯", Color.red);
             return;
         }
 
-        ShowMessage("µÇÂ¼³É¹¦£¡", Color.green);
-        Debug.Log($"[LoginUIManager] ÓÃ»§ {username} µÇÂ¼³É¹¦");
+        ShowMessage("ç™»å½•æˆåŠŸï¼", Color.green);
+        Debug.Log($"[LoginUIManager] ç”¨æˆ· {username} ç™»å½•æˆåŠŸ");
 
         PlayerPrefs.SetString("current_user", username);
         PlayerPrefs.Save();
 
-        // Çå¿ÕÊäÈë¿ò
+        // æ¸…ç©ºè¾“å…¥æ¡†
         if (usernameInput != null) usernameInput.text = string.Empty;
         if (passwordInput != null) passwordInput.text = string.Empty;
 
-        // ÑÓ³Ù½øÈëÓÎÏ·£¬ÈÃÓÃ»§¿´µ½ÌáÊ¾
+        // å»¶è¿Ÿè¿›å…¥æ¸¸æˆï¼Œè®©ç”¨æˆ·çœ‹åˆ°æç¤º
         Invoke(nameof(EnterGame), 1f);
     }
 
@@ -98,7 +112,7 @@ public class LoginUIManager : MonoBehaviour
 
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
         {
-            ShowMessage("ÓÃ»§ÃûºÍÃÜÂë²»ÄÜÎª¿Õ", Color.red);
+            ShowMessage("ç”¨æˆ·åå’Œå¯†ç ä¸èƒ½ä¸ºç©º", Color.red);
             return;
         }
 
@@ -106,17 +120,17 @@ public class LoginUIManager : MonoBehaviour
 
         if (!DatabaseManager.Instance.RegisterUser(username, hashedPassword))
         {
-            ShowMessage("ÓÃ»§ÃûÒÑ´æÔÚ", Color.red);
+            ShowMessage("ç”¨æˆ·åå·²å­˜åœ¨", Color.red);
             return;
         }
 
-        ShowMessage("×¢²á³É¹¦£¡ÇëµÇÂ¼", Color.green);
-        Debug.Log($"[LoginUIManager] ÓÃ»§ {username} ×¢²á³É¹¦");
+        ShowMessage("æ³¨å†ŒæˆåŠŸï¼è¯·ç™»å½•", Color.green);
+        Debug.Log($"[LoginUIManager] ç”¨æˆ· {username} æ³¨å†ŒæˆåŠŸ");
     }
 
     private void OnBackClicked()
     {
-        // ·µ»Ø¿ªÊ¼Ãæ°å
+        // è¿”å›å¼€å§‹é¢æ¿
         if (messageText != null) messageText.text = string.Empty;
         if (usernameInput != null) usernameInput.text = string.Empty;
         if (passwordInput != null) passwordInput.text = string.Empty;

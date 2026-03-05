@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -21,18 +21,18 @@ namespace AI.Providers
             var key = ChatConfig.GetApiKey("DeepSeek");
             if (string.IsNullOrEmpty(key))
             {
-                Debug.LogError("[DeepSeek] ÎŞ·¨¶ÁÈ¡ API Key£¬ÇëÔÚ Resources/APISettings ÅäÖÃ¡£");
+                Debug.LogError("[DeepSeek] æ— æ³•è¯»å– API Keyï¼Œè¯·åœ¨ Resources/APISettings é…ç½®ã€‚");
             }
             return key;
         }
 
-        // Í³Ò»£ºÊ¹ÓÃ ChatMessage ÁĞ±í
+        // ç»Ÿä¸€ï¼šä½¿ç”¨ ChatMessage åˆ—è¡¨
         public static async Task<string> GetAIResponse(List<ChatMessage> chatHistory)
         {
             string apiKey = GetAPIKey();
             if (string.IsNullOrEmpty(apiKey))
             {
-                return "{\"dialogue\":\"ÇëÔÚ Resources/APISettings ÅäÖÃ DeepSeek API ÃÜÔ¿\", \"emotion\":\"Sad\", \"action\":\"\"}";
+                return "{\"dialogue\":\"è¯·åœ¨ Resources/APISettings é…ç½® DeepSeek API å¯†é’¥\", \"emotion\":\"Sad\", \"action\":\"\"}";
             }
 
             var streaming = ChatConfig.GetStreamingEnabled("DeepSeek", false);
@@ -79,7 +79,7 @@ namespace AI.Providers
                 stream = false
             };
 
-            Debug.Log($"[DeepSeek] ·¢ËÍÇëÇó(·ÇÁ÷Ê½) - Ä£ĞÍ: {req.model}, ÎÂ¶È: {temperature}, MaxTokens: {maxTokens}, ÏûÏ¢Êı: {messages.Count}");
+            Debug.Log($"[DeepSeek] å‘é€è¯·æ±‚(éæµå¼) - æ¨¡å‹: {req.model}, æ¸©åº¦: {temperature}, MaxTokens: {maxTokens}, æ¶ˆæ¯æ•°: {messages.Count}");
 
             var http = new HttpRequestMessage(HttpMethod.Post, apiUrl);
             http.Headers.Add("Authorization", $"Bearer {apiKey}");
@@ -92,8 +92,8 @@ namespace AI.Providers
                     var body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
                     if (!resp.IsSuccessStatusCode)
                     {
-                        Debug.LogError($"[DeepSeek] API´íÎó: {(int)resp.StatusCode} {resp.ReasonPhrase}. {body}");
-                        return $"{{\"dialogue\":\"DeepSeek API´íÎó: {(int)resp.StatusCode} {EscapeForJson(resp.ReasonPhrase)}\", \"emotion\":\"Sad\", \"action\":\"\"}}";
+                        Debug.LogError($"[DeepSeek] APIé”™è¯¯: {(int)resp.StatusCode} {resp.ReasonPhrase}. {body}");
+                        return $"{{\"dialogue\":\"DeepSeek APIé”™è¯¯: {(int)resp.StatusCode} {EscapeForJson(resp.ReasonPhrase)}\", \"emotion\":\"Sad\", \"action\":\"\"}}";
                     }
 
                     return TryExtractOnce(body);
@@ -101,12 +101,12 @@ namespace AI.Providers
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[DeepSeek] ÇëÇóÒì³£: {ex.Message}");
-                return $"{{\"dialogue\":\"ÇëÇóÒì³£: {EscapeForJson(ex.Message)}\", \"emotion\":\"Sad\", \"action\":\"\"}}";
+                Debug.LogError($"[DeepSeek] è¯·æ±‚å¼‚å¸¸: {ex.Message}");
+                return $"{{\"dialogue\":\"è¯·æ±‚å¼‚å¸¸: {EscapeForJson(ex.Message)}\", \"emotion\":\"Sad\", \"action\":\"\"}}";
             }
         }
 
-        // Á÷Ê½£ºSSE ÔöÁ¿¶ÁÈ¡
+        // æµå¼ï¼šSSE å¢é‡è¯»å–
         public static async Task SendStream(
             string apiKey,
             List<ChatMessage> chatHistory,
@@ -118,7 +118,7 @@ namespace AI.Providers
             if (string.IsNullOrEmpty(apiKey)) apiKey = GetAPIKey();
             if (string.IsNullOrEmpty(apiKey))
             {
-                onError?.Invoke("DeepSeek API Key Î´ÅäÖÃ");
+                onError?.Invoke("DeepSeek API Key æœªé…ç½®");
                 return;
             }
 
@@ -149,7 +149,7 @@ namespace AI.Providers
                 stream = true
             };
 
-            Debug.Log($"[DeepSeek] ·¢ËÍÇëÇó(Á÷Ê½) - Ä£ĞÍ: {req.model}, ÎÂ¶È: {temperature}, MaxTokens: {maxTokens}, ÏûÏ¢Êı: {messages.Count}");
+            Debug.Log($"[DeepSeek] å‘é€è¯·æ±‚(æµå¼) - æ¨¡å‹: {req.model}, æ¸©åº¦: {temperature}, MaxTokens: {maxTokens}, æ¶ˆæ¯æ•°: {messages.Count}");
 
             try
             {
@@ -175,7 +175,7 @@ namespace AI.Providers
                         while (!reader.EndOfStream && !ct.IsCancellationRequested && (line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)
                         {
                             if (string.IsNullOrWhiteSpace(line)) continue;
-                            if (line.StartsWith(":")) continue; // ×¢ÊÍ/ĞÄÌø
+                            if (line.StartsWith(":")) continue; // æ³¨é‡Š/å¿ƒè·³
                             if (!line.StartsWith("data:")) continue;
 
                             var payload = line.Substring("data:".Length).Trim();
@@ -197,7 +197,7 @@ namespace AI.Providers
                             }
                             catch (Exception ex)
                             {
-                                Debug.LogWarning($"[DeepSeek] SSE ½âÎöÊ§°Ü: {ex.Message} | Ô­Ê¼: {payload}");
+                                Debug.LogWarning($"[DeepSeek] SSE è§£æå¤±è´¥: {ex.Message} | åŸå§‹: {payload}");
                             }
                         }
                     }
@@ -207,7 +207,7 @@ namespace AI.Providers
             }
             catch (TaskCanceledException)
             {
-                onError?.Invoke("ÇëÇóÒÑÈ¡Ïû");
+                onError?.Invoke("è¯·æ±‚å·²å–æ¶ˆ");
             }
             catch (Exception ex)
             {

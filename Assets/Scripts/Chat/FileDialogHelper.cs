@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.IO;
 using UnityEngine;
 #if UNITY_EDITOR
@@ -14,9 +14,9 @@ namespace AI.Chat
 #if UNITY_EDITOR
             string dir = string.IsNullOrEmpty(initialDirectory) ? Application.persistentDataPath : initialDirectory;
             string ext = string.IsNullOrEmpty(extension) ? "" : extension.TrimStart('.');
-            return EditorUtility.OpenFilePanel(string.IsNullOrEmpty(title) ? "´ò¿ªÎÄ¼ş" : title, dir, ext);
+            return EditorUtility.OpenFilePanel(string.IsNullOrEmpty(title) ? "æ‰“å¼€æ–‡ä»¶" : title, dir, ext);
 #else
-            Debug.LogWarning("[FileDialogHelper] µ±Ç°Æ½Ì¨Î´Ìá¹©ÎÄ¼şÑ¡Ôñ¶Ô»°¿ò£¬·µ»Ø null¡£");
+            Debug.LogWarning("[FileDialogHelper] å½“å‰å¹³å°æœªæä¾›æ–‡ä»¶é€‰æ‹©å¯¹è¯æ¡†ï¼Œè¿”å› nullã€‚");
             return null;
 #endif
         }
@@ -27,10 +27,10 @@ namespace AI.Chat
             string dir = string.IsNullOrEmpty(initialDirectory) ? Application.persistentDataPath : initialDirectory;
             string ext = string.IsNullOrEmpty(extension) ? "" : extension.TrimStart('.');
             string file = string.IsNullOrEmpty(defaultFileName) ? "save" : defaultFileName;
-            string path = EditorUtility.SaveFilePanel(string.IsNullOrEmpty(title) ? "±£´æÎÄ¼ş" : title, dir, file, ext);
+            string path = EditorUtility.SaveFilePanel(string.IsNullOrEmpty(title) ? "ä¿å­˜æ–‡ä»¶" : title, dir, file, ext);
             return path;
 #else
-            Debug.LogWarning("[FileDialogHelper] µ±Ç°Æ½Ì¨Î´Ìá¹©ÎÄ¼ş±£´æ¶Ô»°¿ò£¬·µ»Ø null¡£");
+            Debug.LogWarning("[FileDialogHelper] å½“å‰å¹³å°æœªæä¾›æ–‡ä»¶ä¿å­˜å¯¹è¯æ¡†ï¼Œè¿”å› nullã€‚");
             return null;
 #endif
         }

@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -12,6 +12,11 @@ namespace AI.Chat
     {
         public string characterName;
         public List<ChatMessage> chatHistory;
+        public int affinity = 50;
+        public int mood = 50;
+        public int energy = 50;
+        public int stress = 50;
+        public int trust = 50;
         public string timestamp;
     }
 
@@ -33,7 +38,7 @@ namespace AI.Chat
         {
             if (string.IsNullOrEmpty(path))
             {
-                Debug.LogWarning("[SaveSystem] ±£´æÂ·¾¶Îª¿Õ£¬ÒÑÈ¡Ïû±£´æ¡£");
+                Debug.LogWarning("[SaveSystem] ä¿å­˜è·¯å¾„ä¸ºç©ºï¼Œå·²å–æ¶ˆä¿å­˜ã€‚");
                 return;
             }
 
@@ -59,7 +64,7 @@ namespace AI.Chat
         {
             if (string.IsNullOrEmpty(path))
             {
-                Debug.LogWarning("[SaveSystem] ¶ÁÈ¡Â·¾¶Îª¿Õ£¬ÒÑÈ¡Ïû¶ÁÈ¡¡£");
+                Debug.LogWarning("[SaveSystem] è¯»å–è·¯å¾„ä¸ºç©ºï¼Œå·²å–æ¶ˆè¯»å–ã€‚");
                 return null;
             }
 

@@ -42,41 +42,12 @@ namespace AI.Editor
             EditorGUILayout.LabelField("配置状态概览", EditorStyles.boldLabel);
             DrawConfigStatus("DeepSeek", manager.DeepSeek.IsConfigured());
             DrawConfigStatus("Gemini", manager.Gemini.IsConfigured());
+            DrawConfigStatus("Minimax", manager.Minimax.IsConfigured());
             DrawConfigStatus("Qwen", manager.Qwen.IsConfigured()); // 新增：Qwen 对话配置状态
             DrawConfigStatus("Qwen ASR", manager.QwenASR.IsConfigured());
             DrawConfigStatus("Minimax TTS", manager.MinimaxTTS.IsConfigured());
 
             EditorGUILayout.Space(10);
-
-            // 快速设置按钮
-            EditorGUILayout.LabelField("快速设置", EditorStyles.boldLabel);
-            
-            if (GUILayout.Button("设置所有 Qwen 服务为相同 API Key"))
-            {
-                string key = manager.Qwen.ApiKey; // 优先读取对话服务的 Key
-                if (string.IsNullOrEmpty(key))
-                {
-                    // 若为空，尝试读取 ASR 的 Key
-                    key = manager.QwenASR.ApiKey;
-                }
-                if (string.IsNullOrEmpty(key))
-                {
-                    // 仍为空则让用户选择文本文件
-                    string file = EditorUtility.OpenFilePanel("选择包含 API Key 的文本文件", "", "txt");
-                    if (!string.IsNullOrEmpty(file))
-                    {
-                        key = System.IO.File.ReadAllText(file).Trim();
-                    }
-                }
-                
-                if (!string.IsNullOrEmpty(key))
-                {
-                    manager.Qwen.ApiKey = key;     // 新增：设置对话 Qwen 的 API Key
-                    manager.QwenASR.ApiKey = key;
-                    EditorUtility.SetDirty(manager);
-                    Debug.Log("已设置所有 Qwen 服务的 API Key");
-                }
-            }
         }
 
         private void DrawConfigStatus(string serviceName, bool isConfigured)
