@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.IO;
 using System.Net.WebSockets;
 using System.Text;
@@ -12,13 +12,13 @@ using AI.Config;
 namespace AI.STT
 {
     /// <summary>
-    /// Qwen Paraformer å®æ—¶è¯­éŸ³è¯†åˆ«ï¼ˆWebSocket ç‰ˆï¼‰éµå¾ªå®˜æ–¹åè®®
-    /// æ–‡æ¡£: https://help.aliyun.com/zh/model-studio/websocket-for-paraformer-real-time-service
+    /// Qwen Paraformer ÊµÊ±ÓïÒôÊ¶±ğ£¨WebSocket °æ£©×ñÑ­¹Ù·½Ğ­Òé
+    /// ÎÄµµ: https://help.aliyun.com/zh/model-studio/websocket-for-paraformer-real-time-service
     /// </summary>
     public static class Qwen_ASR_Service
     {
         private const string WebSocketUrl = "wss://dashscope.aliyuncs.com/api-ws/v1/inference/";
-        // æ˜¯å¦æ‰“å°é€æ­¥å¢é‡ç»“æœã€‚é»˜è®¤å…³é—­ï¼Œä»…åœ¨æœ€ç»ˆç»“æŸæ—¶æ‰“å°ä¸€æ¬¡ã€‚
+        // ÊÇ·ñ´òÓ¡Öğ²½ÔöÁ¿½á¹û¡£Ä¬ÈÏ¹Ø±Õ£¬½öÔÚ×îÖÕ½áÊøÊ±´òÓ¡Ò»´Î¡£
         private const bool LogPartialResults = false;
 
         private static string GetAPIKey()
@@ -26,7 +26,7 @@ namespace AI.STT
             var cfg = AIAPISettings.Instance?.QwenASR;
             if (cfg == null || !cfg.IsConfigured())
             {
-                Debug.LogError("[Qwen_ASR] æœªæ‰¾åˆ°æˆ–æœªé…ç½® API Keyã€‚");
+                Debug.LogError("[Qwen_ASR] Î´ÕÒµ½»òÎ´ÅäÖÃ API Key¡£");
                 return null;
             }
             return cfg.ApiKey;
@@ -35,18 +35,18 @@ namespace AI.STT
         private static QwenASRConfig GetConfig() => AIAPISettings.Instance?.QwenASR;
 
         /// <summary>
-        /// å‘é€ä¸€æ¬¡æ€§æµå¼è¯†åˆ«è¯·æ±‚ï¼ˆå•æ¬¡éŸ³é¢‘ï¼‰
+        /// ·¢ËÍÒ»´ÎĞÔÁ÷Ê½Ê¶±ğÇëÇó£¨µ¥´ÎÒôÆµ£©
         /// </summary>
         public static async Task<string> TranscribeBytes(string apiKey, byte[] audioBytes, string format = "wav", int? sampleRate = null)
         {
             if (string.IsNullOrEmpty(apiKey)) apiKey = GetAPIKey();
             if (string.IsNullOrEmpty(apiKey) || audioBytes == null || audioBytes.Length == 0)
             {
-                Debug.LogError("[Qwen_ASR] ç¼ºå°‘ API Key æˆ–éŸ³é¢‘ä¸ºç©ºã€‚");
+                Debug.LogError("[Qwen_ASR] È±ÉÙ API Key »òÒôÆµÎª¿Õ¡£");
                 return null;
             }
 
-            // ä¿ç•™ WAV å¤´ï¼ŒæŒ‰ç…§å®˜æ–¹ç¤ºä¾‹ä»¥ format=wav å‘é€æ•´æ®µäºŒè¿›åˆ¶æ•°æ®
+            // ±£Áô WAV Í·£¬°´ÕÕ¹Ù·½Ê¾ÀıÒÔ format=wav ·¢ËÍÕû¶Î¶ş½øÖÆÊı¾İ
             var config = GetConfig();
             string model = config?.Model ?? "paraformer-realtime-v2";
             int sr = sampleRate ?? 16000;
@@ -58,32 +58,32 @@ namespace AI.STT
             {
                 ws = new ClientWebSocket();
                 
-                // æŒ‰å®˜æ–¹ç¤ºä¾‹è®¾ç½®é‰´æƒå¤´ï¼ˆä¸åŠ  Bearer å‰ç¼€ï¼‰
+                // °´¹Ù·½Ê¾ÀıÉèÖÃ¼øÈ¨Í·£¨²»¼Ó Bearer Ç°×º£©
                 ws.Options.SetRequestHeader("Authorization", apiKey);
-                // å¯é€‰ï¼šå¯ç”¨æ•°æ®å·¡æ£€
+                // ¿ÉÑ¡£ºÆôÓÃÊı¾İÑ²¼ì
                 ws.Options.SetRequestHeader("X-DashScope-DataInspection", "enable");
 
-                Debug.Log($"[Qwen_ASR] è¿æ¥åˆ°: {WebSocketUrl}");
+                Debug.Log($"[Qwen_ASR] Á¬½Óµ½: {WebSocketUrl}");
                 
-                // æ·»åŠ è¶…æ—¶å¤„ç†
+                // Ìí¼Ó³¬Ê±´¦Àí
                 var connectTask = ws.ConnectAsync(new Uri(WebSocketUrl), CancellationToken.None);
-                var timeoutTask = Task.Delay(10000); // 10ç§’è¶…æ—¶
+                var timeoutTask = Task.Delay(10000); // 10Ãë³¬Ê±
                 
                 if (await Task.WhenAny(connectTask, timeoutTask) == timeoutTask)
                 {
-                    Debug.LogError("[Qwen_ASR] WebSocket è¿æ¥è¶…æ—¶ã€‚");
+                    Debug.LogError("[Qwen_ASR] WebSocket Á¬½Ó³¬Ê±¡£");
                     return null;
                 }
                 
-                await connectTask; // ç¡®ä¿è·å–ä»»ä½•è¿æ¥å¼‚å¸¸
+                await connectTask; // È·±£»ñÈ¡ÈÎºÎÁ¬½ÓÒì³£
                 
                 if (ws.State != WebSocketState.Open)
                 {
-                    Debug.LogError($"[Qwen_ASR] WebSocket è¿æ¥å¤±è´¥ã€‚çŠ¶æ€: {ws.State}");
+                    Debug.LogError($"[Qwen_ASR] WebSocket Á¬½ÓÊ§°Ü¡£×´Ì¬: {ws.State}");
                     return null;
                 }
 
-                // 1) run-taskï¼ˆä¸¥æ ¼æŒ‰ç…§åè®®å­—æ®µï¼‰
+                // 1) run-task£¨ÑÏ¸ñ°´ÕÕĞ­Òé×Ö¶Î£©
                 var runTask = new JObject
                 {
                     ["header"] = new JObject
@@ -102,7 +102,7 @@ namespace AI.STT
                         {
                             ["format"] = format,
                             ["sample_rate"] = sr
-                            // å…¶ä»–å¯é€‰å‚æ•°ï¼švocabulary_id, disfluency_removal_enabled ç­‰
+                            // ÆäËû¿ÉÑ¡²ÎÊı£ºvocabulary_id, disfluency_removal_enabled µÈ
                         },
                         ["input"] = new JObject()
                     }
@@ -110,16 +110,16 @@ namespace AI.STT
 
                 var runJson = Encoding.UTF8.GetBytes(runTask.ToString(Formatting.None));
                 await ws.SendAsync(new ArraySegment<byte>(runJson), WebSocketMessageType.Text, true, CancellationToken.None);
-                Debug.Log($"[Qwen_ASR] å·²å‘é€ run-task: model={model}, sample_rate={sr}, format={format}");
+                Debug.Log($"[Qwen_ASR] ÒÑ·¢ËÍ run-task: model={model}, sample_rate={sr}, format={format}");
 
-                // 2) ç­‰å¾… task-started å†å‘é€éŸ³é¢‘
+                // 2) µÈ´ı task-started ÔÙ·¢ËÍÒôÆµ
                 if (!await WaitForTaskStarted(ws))
                 {
-                    Debug.LogError("[Qwen_ASR] æœªæ”¶åˆ° task-startedï¼Œç»ˆæ­¢ã€‚");
+                    Debug.LogError("[Qwen_ASR] Î´ÊÕµ½ task-started£¬ÖÕÖ¹¡£");
                     return null;
                 }
 
-                // 3) å‘é€éŸ³é¢‘æµã€‚å®˜æ–¹ç¤ºä¾‹æ¯100mså‘é€çº¦100mséŸ³é¢‘ï¼ˆæ­¤å¤„æŒ‰1KB/å¸§å¹¶å»¶æ—¶100msï¼‰
+                // 3) ·¢ËÍÒôÆµÁ÷¡£¹Ù·½Ê¾ÀıÃ¿100ms·¢ËÍÔ¼100msÒôÆµ£¨´Ë´¦°´1KB/Ö¡²¢ÑÓÊ±100ms£©
                 const int chunkSize = 1024;
                 int sent = 0;
                 while (sent < audioBytes.Length && ws.State == WebSocketState.Open)
@@ -129,9 +129,9 @@ namespace AI.STT
                     sent += size;
                     await Task.Delay(100);
                 }
-                Debug.Log($"[Qwen_ASR] éŸ³é¢‘å‘é€å®Œæˆï¼Œå…± {audioBytes.Length} bytes");
+                Debug.Log($"[Qwen_ASR] ÒôÆµ·¢ËÍÍê³É£¬¹² {audioBytes.Length} bytes");
 
-                // 4) finish-taskï¼ˆåŒæ ·åŒ…å« streamingï¼Œå¹¶å¸¦ç©º inputï¼‰
+                // 4) finish-task£¨Í¬Ñù°üº¬ streaming£¬²¢´ø¿Õ input£©
                 var finishTask = new JObject
                 {
                     ["header"] = new JObject
@@ -147,29 +147,29 @@ namespace AI.STT
                 };
                 var finishJson = Encoding.UTF8.GetBytes(finishTask.ToString(Formatting.None));
                 await ws.SendAsync(new ArraySegment<byte>(finishJson), WebSocketMessageType.Text, true, CancellationToken.None);
-                Debug.Log("[Qwen_ASR] å·²å‘é€ finish-task");
+                Debug.Log("[Qwen_ASR] ÒÑ·¢ËÍ finish-task");
 
-                // 5) æ¥æ”¶ç›´åˆ° task-finishedï¼Œå–æœ€ç»ˆå¥å­
+                // 5) ½ÓÊÕÖ±µ½ task-finished£¬È¡×îÖÕ¾ä×Ó
                 string finalText = await ReceiveUntilFinished(ws);
                 
-                // åœ¨è¿”å›å‰å…³é—­ WebSocket
+                // ÔÚ·µ»ØÇ°¹Ø±Õ WebSocket
                 await CloseWebSocketAsync(ws);
                 
                 return finalText;
             }
             catch (WebSocketException wsEx)
             {
-                Debug.LogError($"[Qwen_ASR] WebSocket å¼‚å¸¸: {wsEx.Message}\n{wsEx.StackTrace}");
+                Debug.LogError($"[Qwen_ASR] WebSocket Òì³£: {wsEx.Message}\n{wsEx.StackTrace}");
                 return null;
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[Qwen_ASR] è¯†åˆ«è¿‡ç¨‹å¼‚å¸¸: {ex.Message}\n{ex.StackTrace}");
+                Debug.LogError($"[Qwen_ASR] Ê¶±ğ¹ı³ÌÒì³£: {ex.Message}\n{ex.StackTrace}");
                 return null;
             }
             finally
             {
-                // ç¡®ä¿ WebSocket æ­£ç¡®é‡Šæ”¾ï¼ˆä¸ä½¿ç”¨ awaitï¼‰
+                // È·±£ WebSocket ÕıÈ·ÊÍ·Å£¨²»Ê¹ÓÃ await£©
                 if (ws != null)
                 {
                     ws.Dispose();
@@ -178,7 +178,7 @@ namespace AI.STT
         }
 
         /// <summary>
-        /// å®‰å…¨å…³é—­ WebSocket è¿æ¥
+        /// °²È«¹Ø±Õ WebSocket Á¬½Ó
         /// </summary>
         private static async Task CloseWebSocketAsync(ClientWebSocket ws)
         {
@@ -188,13 +188,13 @@ namespace AI.STT
             {
                 if (ws.State == WebSocketState.Open || ws.State == WebSocketState.CloseReceived)
                 {
-                    await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "å®Œæˆ", CancellationToken.None);
-                    Debug.Log("[Qwen_ASR] WebSocket å·²æ­£å¸¸å…³é—­");
+                    await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Íê³É", CancellationToken.None);
+                    Debug.Log("[Qwen_ASR] WebSocket ÒÑÕı³£¹Ø±Õ");
                 }
             }
             catch (Exception closeEx)
             {
-                Debug.LogWarning($"[Qwen_ASR] å…³é—­ WebSocket æ—¶å‡ºé”™: {closeEx.Message}");
+                Debug.LogWarning($"[Qwen_ASR] ¹Ø±Õ WebSocket Ê±³ö´í: {closeEx.Message}");
             }
         }
 
@@ -202,73 +202,75 @@ namespace AI.STT
         {
             var buffer = new byte[8192];
             var sb = new StringBuilder();
-            int maxAttempts = 50; // æœ€å¤šç­‰å¾…5ç§’ï¼ˆ50 * 100msï¼‰
-            int attempts = 0;
-            
-            while (attempts < maxAttempts)
+            // ×Ü³¬Ê± 5 Ãë
+            using (var totalCts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
             {
-                attempts++;
-                
-                if (ws.State != WebSocketState.Open)
+                while (!totalCts.IsCancellationRequested)
                 {
-                    Debug.LogWarning($"[Qwen_ASR] WebSocket çŠ¶æ€å¼‚å¸¸: {ws.State}");
-                    return false;
-                }
-                
-                try
-                {
-                    // ä½¿ç”¨çŸ­è¶…æ—¶é¿å…é˜»å¡
-                    var receiveTask = ws.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                    var timeoutTask = Task.Delay(100);
-                    
-                    if (await Task.WhenAny(receiveTask, timeoutTask) == timeoutTask)
+                    if (ws.State != WebSocketState.Open)
                     {
-                        continue; // è¶…æ—¶ï¼Œé‡è¯•
-                    }
-                    
-                    var res = await receiveTask;
-                    
-                    if (res.MessageType == WebSocketMessageType.Close)
-                    {
-                        Debug.LogWarning("[Qwen_ASR] è¿æ¥è¢«å…³é—­ï¼ˆç­‰å¾… task-startedï¼‰");
+                        Debug.LogWarning($"[Qwen_ASR] WebSocket ×´Ì¬Òì³£: {ws.State}");
                         return false;
                     }
 
-                    sb.Append(Encoding.UTF8.GetString(buffer, 0, res.Count));
-                    if (!res.EndOfMessage) continue;
+                    try
+                    {
+                        // Ê¹ÓÃ CancellationToken ¿ØÖÆµ¥´Î½ÓÊÕ³¬Ê±£¬È·±£²»»á²úÉú²¢·¢ ReceiveAsync
+                        using (var receiveCts = CancellationTokenSource.CreateLinkedTokenSource(totalCts.Token))
+                        {
+                            receiveCts.CancelAfter(TimeSpan.FromMilliseconds(500));
+                            var res = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), receiveCts.Token);
 
-                    string msg = sb.ToString();
-                    sb.Length = 0;
-                    
-                    var json = JObject.Parse(msg);
-                    string evt = json["header"]?["event"]?.ToString();
-                    if (evt == "task-started")
-                    {
-                        Debug.Log("[Qwen_ASR] ä»»åŠ¡å¼€å¯æˆåŠŸ");
-                        return true;
+                            if (res.MessageType == WebSocketMessageType.Close)
+                            {
+                                Debug.LogWarning("[Qwen_ASR] Á¬½Ó±»¹Ø±Õ£¨µÈ´ı task-started£©");
+                                return false;
+                            }
+
+                            sb.Append(Encoding.UTF8.GetString(buffer, 0, res.Count));
+                            if (!res.EndOfMessage) continue;
+
+                            string msg = sb.ToString();
+                            sb.Length = 0;
+
+                            var json = JObject.Parse(msg);
+                            string evt = json["header"]?["event"]?.ToString();
+                            if (evt == "task-started")
+                            {
+                                Debug.Log("[Qwen_ASR] ÈÎÎñ¿ªÆô³É¹¦");
+                                return true;
+                            }
+                            if (evt == "task-failed")
+                            {
+                                string err = json["header"]?["error_message"]?.ToString();
+                                Debug.LogError($"[Qwen_ASR] ÈÎÎñÊ§°Ü: {err ?? msg}");
+                                return false;
+                            }
+                            // ÆäËûÊÂ¼şÏÈºöÂÔ£¬¼ÌĞøµÈ´ı
+                            Debug.Log($"[Qwen_ASR] µÈ´ı task-started£¬ÊÕµ½ÊÂ¼ş: {evt ?? "<unknown>"}");
+                        }
                     }
-                    if (evt == "task-failed")
+                    catch (OperationCanceledException)
                     {
-                        string err = json["header"]?["error_message"]?.ToString();
-                        Debug.LogError($"[Qwen_ASR] ä»»åŠ¡å¤±è´¥: {err ?? msg}");
+                        // µ¥´Î½ÓÊÕ³¬Ê±£¬Èç¹û×Ü³¬Ê±ÉĞÎ´µ½ÆÚÔò¼ÌĞøÖØÊÔ
+                        if (totalCts.IsCancellationRequested)
+                            break;
+                        continue;
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        Debug.LogWarning($"[Qwen_ASR] JSON ½âÎöÊ§°Ü£¨µÈ´ı task-started£©: {jsonEx.Message}");
+                        sb.Length = 0; // Çå¿Õ»º³åÇø
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[Qwen_ASR] ½ÓÊÕÏûÏ¢Ê§°Ü: {ex.Message}");
                         return false;
                     }
-                    // å…¶ä»–äº‹ä»¶å…ˆå¿½ç•¥ï¼Œç»§ç»­ç­‰å¾…
-                    Debug.Log($"[Qwen_ASR] ç­‰å¾… task-startedï¼Œæ”¶åˆ°äº‹ä»¶: {evt ?? "<unknown>"}");
-                }
-                catch (JsonException jsonEx)
-                {
-                    Debug.LogWarning($"[Qwen_ASR] JSON è§£æå¤±è´¥ï¼ˆç­‰å¾… task-startedï¼‰: {jsonEx.Message}");
-                    sb.Length = 0; // æ¸…ç©ºç¼“å†²åŒº
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogWarning($"[Qwen_ASR] æ¥æ”¶æ¶ˆæ¯å¤±è´¥: {ex.Message}");
-                    return false;
                 }
             }
-            
-            Debug.LogError("[Qwen_ASR] ç­‰å¾… task-started è¶…æ—¶");
+
+            Debug.LogError("[Qwen_ASR] µÈ´ı task-started ³¬Ê±");
             return false;
         }
 
@@ -276,103 +278,110 @@ namespace AI.STT
         {
             var buffer = new byte[65536];
             var sb = new StringBuilder();
-            string lastSentence = null; // ä¿å­˜æœ€æ–°å¥å­ï¼Œé¿å…æŠŠå¢é‡é‡å¤æ‹¼æ¥
-            int maxAttempts = 300; // æœ€å¤šç­‰å¾…30ç§’
-            int attempts = 0;
-
-            while (attempts < maxAttempts)
+            string lastSentence = null; // ±£´æ×îĞÂ¾ä×Ó£¬±ÜÃâ°ÑÔöÁ¿ÖØ¸´Æ´½Ó
+            bool timedOut = false;
+            // ×Ü³¬Ê± 30 Ãë
+            using (var totalCts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
             {
-                attempts++;
-                
-                if (ws.State != WebSocketState.Open)
+                while (!totalCts.IsCancellationRequested)
                 {
-                    Debug.LogWarning($"[Qwen_ASR] WebSocket çŠ¶æ€: {ws.State}ï¼Œåœæ­¢æ¥æ”¶");
-                    break;
-                }
-                
-                try
-                {
-                    var receiveTask = ws.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                    var timeoutTask = Task.Delay(100);
-                    
-                    if (await Task.WhenAny(receiveTask, timeoutTask) == timeoutTask)
+                    if (ws.State != WebSocketState.Open)
                     {
-                        continue; // è¶…æ—¶ï¼Œé‡è¯•
-                    }
-                    
-                    var res = await receiveTask;
-                    
-                    if (res.MessageType == WebSocketMessageType.Close)
-                    {
-                        Debug.Log("[Qwen_ASR] æœåŠ¡ç«¯å…³é—­è¿æ¥");
+                        Debug.LogWarning($"[Qwen_ASR] WebSocket ×´Ì¬: {ws.State}£¬Í£Ö¹½ÓÊÕ");
                         break;
                     }
 
-                    sb.Append(Encoding.UTF8.GetString(buffer, 0, res.Count));
-                    if (!res.EndOfMessage) continue;
-
-                    string combined = sb.ToString();
-                    sb.Length = 0;
-
-                    var json = JObject.Parse(combined);
-                    string evt = json["header"]?["event"]?.ToString();
-                    
-                    if (evt == "result-generated")
+                    try
                     {
-                        // å®˜æ–¹ç¤ºä¾‹: payload.output.sentence.text
-                        string sentence = json["payload"]?["output"]?["sentence"]?["text"]?.ToString();
-                        if (string.IsNullOrEmpty(sentence))
+                        // Ê¹ÓÃ CancellationToken ¿ØÖÆµ¥´Î½ÓÊÕ³¬Ê±£¬È·±£²»»á²úÉú²¢·¢ ReceiveAsync
+                        using (var receiveCts = CancellationTokenSource.CreateLinkedTokenSource(totalCts.Token))
                         {
-                            // å…¼å®¹æ—§æ ¼å¼: payload.output[0].text
-                            sentence = json["payload"]?["output"]?[0]?["text"]?.ToString();
-                        }
-                        if (!string.IsNullOrEmpty(sentence))
-                        {
-                            // åªä¿ç•™æœ€æ–°å¥å­ï¼Œé¿å…é‡å¤
-                            lastSentence = sentence;
-                        }
-                        // æ‰“å°è®¡è´¹æ—¶é•¿ï¼ˆè‹¥æœ‰ï¼‰
-                        var dur = json["payload"]?["usage"]?["duration"]?.ToString();
-                        if (!string.IsNullOrEmpty(dur))
-                        {
-                            Debug.Log($"[Qwen_ASR] ä»»åŠ¡è®¡è´¹æ—¶é•¿ï¼ˆç§’ï¼‰: {dur}");
+                            receiveCts.CancelAfter(TimeSpan.FromMilliseconds(500));
+                            var res = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), receiveCts.Token);
+
+                            if (res.MessageType == WebSocketMessageType.Close)
+                            {
+                                Debug.Log("[Qwen_ASR] ·şÎñ¶Ë¹Ø±ÕÁ¬½Ó");
+                                break;
+                            }
+
+                            sb.Append(Encoding.UTF8.GetString(buffer, 0, res.Count));
+                            if (!res.EndOfMessage) continue;
+
+                            string combined = sb.ToString();
+                            sb.Length = 0;
+
+                            var json = JObject.Parse(combined);
+                            string evt = json["header"]?["event"]?.ToString();
+
+                            if (evt == "result-generated")
+                            {
+                                // ¹Ù·½Ê¾Àı: payload.output.sentence.text
+                                string sentence = json["payload"]?["output"]?["sentence"]?["text"]?.ToString();
+                                if (string.IsNullOrEmpty(sentence))
+                                {
+                                    // ¼æÈİ¾É¸ñÊ½: payload.output[0].text
+                                    sentence = json["payload"]?["output"]?[0]?["text"]?.ToString();
+                                }
+                                if (!string.IsNullOrEmpty(sentence))
+                                {
+                                    // Ö»±£Áô×îĞÂ¾ä×Ó£¬±ÜÃâÖØ¸´
+                                    lastSentence = sentence;
+                                }
+                                // ´òÓ¡¼Æ·ÑÊ±³¤£¨ÈôÓĞ£©
+                                var dur = json["payload"]?["usage"]?["duration"]?.ToString();
+                                if (!string.IsNullOrEmpty(dur))
+                                {
+                                    Debug.Log($"[Qwen_ASR] ÈÎÎñ¼Æ·ÑÊ±³¤£¨Ãë£©: {dur}");
+                                }
+                            }
+                            else if (evt == "task-finished")
+                            {
+                                Debug.Log($"[Qwen_ASR] Ê¶±ğÍê³É£¬×îÖÕ½á¹û: {lastSentence ?? "(¿Õ)"}");
+                                break;
+                            }
+                            else if (evt == "task-failed")
+                            {
+                                string err = json["header"]?["error_message"]?.ToString();
+                                Debug.LogError($"[Qwen_ASR] ÈÎÎñÊ§°Ü: {err ?? combined}");
+                                break;
+                            }
+                            else
+                            {
+                                Debug.Log($"[Qwen_ASR] ÊÕµ½ÊÂ¼ş: {evt ?? "<unknown>"}");
+                            }
                         }
                     }
-                    else if (evt == "task-finished")
+                    catch (OperationCanceledException)
                     {
-                        Debug.Log($"[Qwen_ASR] è¯†åˆ«å®Œæˆï¼Œæœ€ç»ˆç»“æœ: {lastSentence ?? "(ç©º)"}");
+                        // µ¥´Î½ÓÊÕ³¬Ê±£¬Èç¹û×Ü³¬Ê±ÉĞÎ´µ½ÆÚÔò¼ÌĞøÖØÊÔ
+                        if (totalCts.IsCancellationRequested)
+                        {
+                            timedOut = true;
+                            break;
+                        }
+                        continue;
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        Debug.LogWarning($"[Qwen_ASR] JSON ½âÎöÊ§°Ü: {jsonEx.Message}");
+                        sb.Length = 0; // Çå¿Õ»º³åÇø
+                    }
+                    catch (WebSocketException wsEx)
+                    {
+                        Debug.LogError($"[Qwen_ASR] WebSocket ½ÓÊÕÒì³£: {wsEx.Message}");
                         break;
                     }
-                    else if (evt == "task-failed")
+                    catch (Exception ex)
                     {
-                        string err = json["header"]?["error_message"]?.ToString();
-                        Debug.LogError($"[Qwen_ASR] ä»»åŠ¡å¤±è´¥: {err ?? combined}");
-                        break;
-                    }
-                    else
-                    {
-                        Debug.Log($"[Qwen_ASR] æ”¶åˆ°äº‹ä»¶: {evt ?? "<unknown>"}");
+                        Debug.LogWarning($"[Qwen_ASR] ½ÓÊÕÏûÏ¢Òì³£: {ex.Message}");
                     }
                 }
-                catch (JsonException jsonEx)
+
+                if (totalCts.IsCancellationRequested || timedOut)
                 {
-                    Debug.LogWarning($"[Qwen_ASR] JSON è§£æå¤±è´¥: {jsonEx.Message}");
-                    sb.Length = 0; // æ¸…ç©ºç¼“å†²åŒº
+                    Debug.LogWarning("[Qwen_ASR] ½ÓÊÕ³¬Ê±");
                 }
-                catch (WebSocketException wsEx)
-                {
-                    Debug.LogError($"[Qwen_ASR] WebSocket æ¥æ”¶å¼‚å¸¸: {wsEx.Message}");
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogWarning($"[Qwen_ASR] æ¥æ”¶æ¶ˆæ¯å¼‚å¸¸: {ex.Message}");
-                }
-            }
-            
-            if (attempts >= maxAttempts)
-            {
-                Debug.LogWarning("[Qwen_ASR] æ¥æ”¶è¶…æ—¶");
             }
 
             return string.IsNullOrWhiteSpace(lastSentence) ? null : lastSentence;
@@ -383,20 +392,20 @@ namespace AI.STT
             if (string.IsNullOrEmpty(apiKey)) apiKey = GetAPIKey();
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
             {
-                Debug.LogError("[Qwen_ASR] æ–‡ä»¶è·¯å¾„æ— æ•ˆã€‚");
+                Debug.LogError("[Qwen_ASR] ÎÄ¼şÂ·¾¶ÎŞĞ§¡£");
                 return null;
             }
 
             try
             {
-                // ä½¿ç”¨åŒæ­¥æ–¹æ³•è¯»å–æ–‡ä»¶ï¼Œå…¼å®¹ .NET Framework 4.7.1
+                // Ê¹ÓÃÍ¬²½·½·¨¶ÁÈ¡ÎÄ¼ş£¬¼æÈİ .NET Framework 4.7.1
                 byte[] bytes = File.ReadAllBytes(path);
                 string ext = Path.GetExtension(path).TrimStart('.').ToLowerInvariant();
                 return await TranscribeBytes(apiKey, bytes, ext);
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[Qwen_ASR] è¯»å–æ–‡ä»¶å¤±è´¥: {ex.Message}");
+                Debug.LogError($"[Qwen_ASR] ¶ÁÈ¡ÎÄ¼şÊ§°Ü: {ex.Message}");
                 return null;
             }
         }

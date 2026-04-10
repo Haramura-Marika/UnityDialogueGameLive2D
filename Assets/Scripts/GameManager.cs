@@ -23,18 +23,9 @@ public class GameManager : MonoBehaviour
             // 如果我是第一个实例，那么就把我自己赋值给这个静态实例
             Instance = this;
 
-            // 4. (可选但强烈推荐) 让GameManager在加载新场景时不被销毁
+            // 4. 让GameManager在加载新场景时不被销毁
             //    这确保了我们的“总指挥”在整个程序生命周期中都存在
             DontDestroyOnLoad(this.gameObject);
         }
-    }
-
-    // --- 在这里添加你的全局公共方法 ---
-
-    // 这是一个测试方法，用来演示如何从外部调用
-    public void PrintHello()
-    {
-        // Debug.Log会在Unity的控制台打印信息，非常适合调试
-        Debug.Log("你好，来自GameManager的问候！");
     }
 }

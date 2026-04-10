@@ -48,6 +48,99 @@ namespace AI.Providers
             return sb.ToString();
         }
 
+        private static List<GeminiContent> BuildContents(List<ChatMessage> chatHistory)
+        {
+            var geminiContents = new List<GeminiContent>();
+            var pendingSystemPrompt = new StringBuilder();
+
+            if (chatHistory == null) return geminiContents;
+
+            foreach (var message in chatHistory)
+            {
+                if (message == null) continue;
+
+                string role = NormalizeRole(message.role);
+                string text = BuildMessageText(message);
+                if (string.IsNullOrEmpty(text)) continue;
+
+                if (role == "system")
+                {
+                    if (pendingSystemPrompt.Length > 0)
+                    {
+                        pendingSystemPrompt.Append("\n\n");
+                    }
+
+                    pendingSystemPrompt.Append(text);
+                    continue;
+                }
+
+                if (pendingSystemPrompt.Length > 0)
+                {
+                    string systemText = "[System]\n" + pendingSystemPrompt;
+                    if (role == "user")
+                    {
+                        text = systemText + "\n\n" + text;
+                    }
+                    else
+                    {
+                        geminiContents.Add(CreateContent("user", systemText));
+                    }
+
+                    pendingSystemPrompt.Length = 0;
+                }
+
+                geminiContents.Add(CreateContent(role, text));
+            }
+
+            if (pendingSystemPrompt.Length > 0)
+            {
+                geminiContents.Add(CreateContent("user", "[System]\n" + pendingSystemPrompt));
+            }
+
+            return geminiContents;
+        }
+
+        private static GeminiContent CreateContent(string role, string text)
+        {
+            return new GeminiContent
+            {
+                role = role,
+                parts = new List<GeminiPart> { new GeminiPart { text = text } }
+            };
+        }
+
+        private static string NormalizeRole(string role)
+        {
+            switch ((role ?? "").Trim().ToLowerInvariant())
+            {
+                case "assistant":
+                case "model":
+                    return "model";
+                case "system":
+                case "developer":
+                    return "system";
+                case "user":
+                    return "user";
+                default:
+                    return "user";
+            }
+        }
+
+        private static string BuildMessageText(ChatMessage message)
+        {
+            var sb = new StringBuilder();
+            if (message?.parts == null) return "";
+
+            foreach (var part in message.parts)
+            {
+                if (part == null || string.IsNullOrEmpty(part.text)) continue;
+                if (sb.Length > 0) sb.Append("\n");
+                sb.Append(part.text);
+            }
+
+            return sb.ToString();
+        }
+
         // 非流式：一次性返回
         private static async Task<string> SendOnce(string apiKey, List<ChatMessage> chatHistory)
         {
@@ -65,24 +158,7 @@ namespace AI.Providers
             client.DefaultRequestHeaders.Add("x-goog-api-key", apiKey);
 
             // 将通用结构转换为 Gemini 的 contents/parts
-            var geminiContents = new List<GeminiContent>();
-            if (chatHistory != null)
-            {
-                foreach (var m in chatHistory)
-                {
-                    if (m == null) continue;
-                    var parts = new List<GeminiPart>();
-                    if (m.parts != null)
-                    {
-                        foreach (var p in m.parts)
-                        {
-                            if (p == null) continue;
-                            parts.Add(new GeminiPart { text = p.text });
-                        }
-                    }
-                    geminiContents.Add(new GeminiContent { role = m.role, parts = parts });
-                }
-            }
+            var geminiContents = BuildContents(chatHistory);
 
             var requestData = new GeminiRequest
             {
@@ -151,24 +227,7 @@ namespace AI.Providers
             Debug.Log($"[Gemini] 发送请求(流式) - 模型: {model}, 温度: {temperature}, MaxTokens: {maxOutputTokens}");
 
             // 将通用结构转换为 Gemini 的 contents/parts
-            var geminiContents = new List<GeminiContent>();
-            if (chatHistory != null)
-            {
-                foreach (var m in chatHistory)
-                {
-                    if (m == null) continue;
-                    var parts = new List<GeminiPart>();
-                    if (m.parts != null)
-                    {
-                        foreach (var p in m.parts)
-                        {
-                            if (p == null) continue;
-                            parts.Add(new GeminiPart { text = p.text });
-                        }
-                    }
-                    geminiContents.Add(new GeminiContent { role = m.role, parts = parts });
-                }
-            }
+            var geminiContents = BuildContents(chatHistory);
 
             var requestData = new GeminiRequest
             {

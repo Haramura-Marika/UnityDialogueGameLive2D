@@ -44,13 +44,12 @@ public class DatabaseManager : MonoBehaviour
         InitializeDatabase();
     }
 
-    /// <summary>
-    /// 转义 SQL 字符串值，防止单引号导致语法错误
-    /// </summary>
-    private static string Esc(string value)
+    private static void AddParam(SqliteCommand cmd, string name, object value)
     {
-        if (value == null) return "";
-        return value.Replace("'", "''");
+        var param = cmd.CreateParameter();
+        param.ParameterName = name;
+        param.Value = value ?? DBNull.Value;
+        cmd.Parameters.Add(param);
     }
 
     /// <summary>
@@ -223,7 +222,8 @@ public class DatabaseManager : MonoBehaviour
                 // 检查用户名是否已存在
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT COUNT(*) FROM users WHERE username = '" + Esc(username) + "';";
+                    cmd.CommandText = "SELECT COUNT(*) FROM users WHERE username = @username;";
+                    AddParam(cmd, "@username", username);
                     long count = (long)cmd.ExecuteScalar();
                     Debug.Log($"[DatabaseManager] RegisterUser 检查 '{username}' 存在数量: {count}");
                     if (count > 0)
@@ -235,8 +235,9 @@ public class DatabaseManager : MonoBehaviour
                 // 插入新用户
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "INSERT INTO users (username, password_hash) VALUES ('"
-                                      + Esc(username) + "', '" + Esc(passwordHash) + "');";
+                    cmd.CommandText = "INSERT INTO users (username, password_hash) VALUES (@username, @passwordHash);";
+                    AddParam(cmd, "@username", username);
+                    AddParam(cmd, "@passwordHash", passwordHash);
                     cmd.ExecuteNonQuery();
                 }
 
@@ -263,7 +264,8 @@ public class DatabaseManager : MonoBehaviour
 
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT password_hash FROM users WHERE username = '" + Esc(username) + "';";
+                    cmd.CommandText = "SELECT password_hash FROM users WHERE username = @username;";
+                    AddParam(cmd, "@username", username);
                     object result = cmd.ExecuteScalar();
 
                     if (result == null || result == DBNull.Value)
@@ -293,7 +295,8 @@ public class DatabaseManager : MonoBehaviour
 
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT COUNT(*) FROM users WHERE username = '" + Esc(username) + "';";
+                    cmd.CommandText = "SELECT COUNT(*) FROM users WHERE username = @username;";
+                    AddParam(cmd, "@username", username);
                     long count = (long)cmd.ExecuteScalar();
                     Debug.Log($"[DatabaseManager] UserExists '{username}' => {count}");
                     return count > 0;
@@ -317,7 +320,8 @@ public class DatabaseManager : MonoBehaviour
 
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT id FROM users WHERE username = '" + Esc(username) + "';";
+                    cmd.CommandText = "SELECT id FROM users WHERE username = @username;";
+                    AddParam(cmd, "@username", username);
                     object result = cmd.ExecuteScalar();
                     if (result != null && result != DBNull.Value)
                     {
@@ -359,25 +363,27 @@ public class DatabaseManager : MonoBehaviour
 
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "DELETE FROM chat_history WHERE user_id = " + userId
-                        + " AND slot_name = '" + Esc(slotName) + "';";
+                    cmd.CommandText = "DELETE FROM chat_history WHERE user_id = @userId AND slot_name = @slotName;";
+                    AddParam(cmd, "@userId", userId);
+                    AddParam(cmd, "@slotName", slotName);
                     cmd.ExecuteNonQuery();
                 }
 
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText =
-                        "INSERT INTO chat_history (user_id, character_name, slot_name, chat_data, timestamp, affinity, mood, energy, stress, trust) VALUES ("
-                        + userId + ", '"
-                        + Esc(characterName) + "', '"
-                        + Esc(slotName) + "', '"
-                        + Esc(chatDataJson) + "', '"
-                        + Esc(timestamp) + "', "
-                        + affinity + ", "
-                        + mood + ", "
-                        + energy + ", "
-                        + stress + ", "
-                        + trust + ");";
+                        "INSERT INTO chat_history (user_id, character_name, slot_name, chat_data, timestamp, affinity, mood, energy, stress, trust) " +
+                        "VALUES (@userId, @characterName, @slotName, @chatData, @timestamp, @affinity, @mood, @energy, @stress, @trust);";
+                    AddParam(cmd, "@userId", userId);
+                    AddParam(cmd, "@characterName", characterName);
+                    AddParam(cmd, "@slotName", slotName);
+                    AddParam(cmd, "@chatData", chatDataJson);
+                    AddParam(cmd, "@timestamp", timestamp);
+                    AddParam(cmd, "@affinity", affinity);
+                    AddParam(cmd, "@mood", mood);
+                    AddParam(cmd, "@energy", energy);
+                    AddParam(cmd, "@stress", stress);
+                    AddParam(cmd, "@trust", trust);
                     cmd.ExecuteNonQuery();
                 }
 
@@ -410,9 +416,10 @@ public class DatabaseManager : MonoBehaviour
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText =
-                        "SELECT character_name, chat_data, timestamp, affinity, mood, energy, stress, trust FROM chat_history WHERE user_id = "
-                        + userId + " AND slot_name = '" + Esc(slotName)
-                        + "' ORDER BY id DESC LIMIT 1;";
+                        "SELECT character_name, chat_data, timestamp, affinity, mood, energy, stress, trust " +
+                        "FROM chat_history WHERE user_id = @userId AND slot_name = @slotName ORDER BY id DESC LIMIT 1;";
+                    AddParam(cmd, "@userId", userId);
+                    AddParam(cmd, "@slotName", slotName);
 
                     using (var reader = cmd.ExecuteReader())
                     {
@@ -473,8 +480,9 @@ public class DatabaseManager : MonoBehaviour
 
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT slot_name, character_name, timestamp FROM chat_history WHERE user_id = "
-                                      + userId + " ORDER BY timestamp DESC;";
+                    cmd.CommandText =
+                        "SELECT slot_name, character_name, timestamp FROM chat_history WHERE user_id = @userId ORDER BY timestamp DESC;";
+                    AddParam(cmd, "@userId", userId);
 
                     using (var reader = cmd.ExecuteReader())
                     {
@@ -512,8 +520,9 @@ public class DatabaseManager : MonoBehaviour
 
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "DELETE FROM chat_history WHERE user_id = " + userId
-                        + " AND slot_name = '" + Esc(slotName) + "';";
+                    cmd.CommandText = "DELETE FROM chat_history WHERE user_id = @userId AND slot_name = @slotName;";
+                    AddParam(cmd, "@userId", userId);
+                    AddParam(cmd, "@slotName", slotName);
                     cmd.ExecuteNonQuery();
                 }
 
@@ -547,8 +556,8 @@ public class DatabaseManager : MonoBehaviour
                 conn.Open();
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT translated_text FROM translation_cache WHERE source_hash = '" +
-                                      Esc(hash) + "';";
+                    cmd.CommandText = "SELECT translated_text FROM translation_cache WHERE source_hash = @hash;";
+                    AddParam(cmd, "@hash", hash);
                     object result = cmd.ExecuteScalar();
                     if (result != null && result != DBNull.Value)
                     {
@@ -576,8 +585,9 @@ public class DatabaseManager : MonoBehaviour
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText =
-                        "INSERT OR REPLACE INTO translation_cache (source_hash, translated_text) VALUES ('"
-                        + Esc(hash) + "', '" + Esc(translatedText) + "');";
+                        "INSERT OR REPLACE INTO translation_cache (source_hash, translated_text) VALUES (@hash, @translatedText);";
+                    AddParam(cmd, "@hash", hash);
+                    AddParam(cmd, "@translatedText", translatedText);
                     cmd.ExecuteNonQuery();
                 }
             }

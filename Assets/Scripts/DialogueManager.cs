@@ -55,6 +55,7 @@ public class DialogueManager : MonoBehaviour
 
     // TTS 管理
     private CancellationTokenSource _currentTTSCancellation;
+    private CancellationTokenSource _currentAIStreamCancellation;
     private bool _isTTSPlaying = false;
 
     // TTS 播放队列（用于从回调线程调度到主线程）
@@ -65,6 +66,7 @@ public class DialogueManager : MonoBehaviour
 
     private bool _chatInitialized = false;
     private bool _chatInitializing = false;
+    private int _sessionVersion = 0;
 
     private void Awake()
     {
@@ -157,6 +159,9 @@ public class DialogueManager : MonoBehaviour
         // 刷新当前用户名（登录后才有值）
         _currentUsername = PlayerPrefs.GetString("current_user", string.Empty);
 
+        StopCurrentTTS();
+        isWaitingForAI = false;
+
         try
         {
             // 尝试从数据库加载历史记录
@@ -196,6 +201,8 @@ public class DialogueManager : MonoBehaviour
                         // 初始更新UI
                         OnStatsChanged?.Invoke(currentAffinity, currentMood, currentEnergy, currentStress,
                             currentTrust);
+                        _sessionVersion++;
+                        _chatInitialized = true;
                         return;
                     }
                 }
@@ -312,6 +319,9 @@ public class DialogueManager : MonoBehaviour
             var historyData = DatabaseManager.Instance.LoadChatHistory(_currentUsername, slotName);
             if (historyData != null)
             {
+                StopCurrentTTS();
+                isWaitingForAI = false;
+
                 var textAsset = Resources.Load<TextAsset>($"Characters/{historyData.characterName}");
                 if (textAsset != null)
                 {
@@ -334,6 +344,8 @@ public class DialogueManager : MonoBehaviour
 
                 // 初始更新UI
                 OnStatsChanged?.Invoke(currentAffinity, currentMood, currentEnergy, currentStress, currentTrust);
+                _sessionVersion++;
+                _chatInitialized = true;
                 Debug.Log($"[DialogueManager] 从数据库加载进度: {historyData.characterName} ({historyData.timestamp})");
                 return;
             }
@@ -371,6 +383,9 @@ public class DialogueManager : MonoBehaviour
     {
         if (data == null) return;
 
+        StopCurrentTTS();
+        isWaitingForAI = false;
+
         var textAsset = Resources.Load<TextAsset>($"Characters/{data.characterName}");
         if (textAsset != null)
         {
@@ -394,6 +409,8 @@ public class DialogueManager : MonoBehaviour
 
         // 初始更新UI
         OnStatsChanged?.Invoke(currentAffinity, currentMood, currentEnergy, currentStress, currentTrust);
+        _sessionVersion++;
+        _chatInitialized = true;
 
         UnityEngine.Debug.Log($"[DialogueManager] 已加载进度: {data.characterName} ({data.timestamp})");
     }
@@ -403,6 +420,9 @@ public class DialogueManager : MonoBehaviour
     /// </summary>
     public void RestartChat()
     {
+        StopCurrentTTS();
+        _sessionVersion++;
+        isWaitingForAI = false;
         _chatInitialized = false;
         _chatInitializing = false;
         _activeProfile = null;
@@ -424,14 +444,14 @@ public class DialogueManager : MonoBehaviour
     /// </summary>
     public void ResetSession()
     {
+        StopCurrentTTS();
+        _sessionVersion++;
+        isWaitingForAI = false;
         _chatInitialized = false;
         _chatInitializing = false;
         _activeProfile = null;
         _currentUsername = null;
         chatHistory = null;
-
-        // 停止当前 TTS
-        StopCurrentTTS();
 
         ClearUI();
 
@@ -519,31 +539,56 @@ public class DialogueManager : MonoBehaviour
         InputManager.OnMessageSent -= HandleMessageSent;
     }
 
+    private void CancelCurrentAIStream()
+    {
+        if (_currentAIStreamCancellation == null) return;
+
+        UnityEngine.Debug.Log("[DialogueManager] 取消当前 AI 流式请求");
+        _currentAIStreamCancellation.Cancel();
+        _currentAIStreamCancellation = null;
+    }
+
+    private bool IsRequestStale(int requestSessionVersion)
+    {
+        return requestSessionVersion != _sessionVersion || chatHistory == null;
+    }
+
+    private void FinishRequestIfCurrent(int requestSessionVersion)
+    {
+        if (requestSessionVersion == _sessionVersion)
+        {
+            isWaitingForAI = false;
+        }
+    }
+
     /// <summary>
     /// 停止当前正在播放的 TTS
     /// </summary>
     private void StopCurrentTTS()
     {
-        if (_isTTSPlaying && _currentTTSCancellation != null)
+        bool hadTTSWork = _isTTSPlaying || _currentTTSCancellation != null || _ttsQueue.Count > 0 || _isProcessingTTS;
+
+        CancelCurrentAIStream();
+
+        if (_currentTTSCancellation != null)
         {
-            UnityEngine.Debug.Log("[DialogueManager] 停止当前 TTS 播放");
+            if (hadTTSWork)
+            {
+                UnityEngine.Debug.Log("[DialogueManager] 停止当前 TTS 播放");
+            }
+
             _currentTTSCancellation.Cancel();
             _currentTTSCancellation = null;
-            _isTTSPlaying = false;
-
-            // 清空 TTS 队列
-            while (_ttsQueue.TryDequeue(out _))
-            {
-            }
-
-            _isProcessingTTS = false;
-
-            // 清空 AudioManager 的音频队列
-            if (audioManager != null)
-            {
-                // AudioManager 会在 PlayTTS 被取消时自动清理
-            }
         }
+
+        _isTTSPlaying = false;
+
+        // 清空 TTS 队列
+        while (_ttsQueue.TryDequeue(out _))
+        {
+        }
+
+        _isProcessingTTS = false;
     }
 
     private async void HandleMessageSent(string message)
@@ -567,6 +612,8 @@ public class DialogueManager : MonoBehaviour
 
         // 用户发送新消息时，立即打断当前的 TTS
         StopCurrentTTS();
+        _sessionVersion++;
+        int requestSessionVersion = _sessionVersion;
 
         AddMessageToUI(message, true);
         chatHistory.Add(new ChatMessage
@@ -604,7 +651,9 @@ public class DialogueManager : MonoBehaviour
 
         if (useStream)
         {
+            CancelCurrentAIStream();
             var cts = new CancellationTokenSource();
+            _currentAIStreamCancellation = cts;
             var sb = new StringBuilder();
             var tcs = new TaskCompletionSource<string>();
 
@@ -621,6 +670,7 @@ public class DialogueManager : MonoBehaviour
                 onDelta: delta =>
                 {
                     if (string.IsNullOrEmpty(delta)) return;
+                    if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion)) return;
                     sb.Append(delta);
 
                     string accumulated = sb.ToString();
@@ -680,6 +730,12 @@ public class DialogueManager : MonoBehaviour
                 onCompleted: finalText => { tcs.TrySetResult(finalText); },
                 onError: err =>
                 {
+                    if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion))
+                    {
+                        tcs.TrySetException(new OperationCanceledException());
+                        return;
+                    }
+
                     UnityEngine.Debug.LogError($"[DialogueManager] 流式错误: {err}");
                     tcs.TrySetException(new Exception(err ?? "stream error"));
                 },
@@ -692,10 +748,19 @@ public class DialogueManager : MonoBehaviour
             }
             catch (Exception ex)
             {
-                UnityEngine.Debug.LogError($"[DialogueManager] 流式失败: {ex.Message}");
-                if (thinkingBubble != null) thinkingBubble.SetText("抱歉，我好像走神了...");
-                StopCurrentTTS();
-                isWaitingForAI = false;
+                if (!cts.IsCancellationRequested && !IsRequestStale(requestSessionVersion))
+                {
+                    UnityEngine.Debug.LogError($"[DialogueManager] 流式失败: {ex.Message}");
+                    if (thinkingBubble != null) thinkingBubble.SetText("抱歉，我好像走神了...");
+                    StopCurrentTTS();
+                }
+                FinishRequestIfCurrent(requestSessionVersion);
+                return;
+            }
+
+            if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion))
+            {
+                FinishRequestIfCurrent(requestSessionVersion);
                 return;
             }
 
@@ -709,6 +774,12 @@ public class DialogueManager : MonoBehaviour
                 {
                     await Task.Delay(50);
                     waitCount++;
+                }
+
+                if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion))
+                {
+                    FinishRequestIfCurrent(requestSessionVersion);
+                    return;
                 }
 
                 // 播放剩余缓冲区中的文本（如果有）
@@ -730,6 +801,13 @@ public class DialogueManager : MonoBehaviour
                 }
 
                 _isTTSPlaying = false;
+                _currentTTSCancellation = null;
+
+                if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion))
+                {
+                    FinishRequestIfCurrent(requestSessionVersion);
+                    return;
+                }
 
                 // 确保最终文本显示在UI上
                 if (thinkingBubble != null)
@@ -749,12 +827,22 @@ public class DialogueManager : MonoBehaviour
                 if (thinkingBubble != null) thinkingBubble.SetText("抱歉，我好像走神了...");
             }
 
-            isWaitingForAI = false;
+            if (ReferenceEquals(_currentAIStreamCancellation, cts))
+            {
+                _currentAIStreamCancellation = null;
+            }
+            FinishRequestIfCurrent(requestSessionVersion);
             return;
         }
 
         // 非流式原流程
         string aiResponseJson = await AIService.GetAIResponse(chatHistoryForAI);
+        if (IsRequestStale(requestSessionVersion))
+        {
+            FinishRequestIfCurrent(requestSessionVersion);
+            return;
+        }
+
         AIResponseData responseData2 = ParseAIResponse(aiResponseJson);
 
         if (responseData2 != null)
@@ -776,6 +864,16 @@ public class DialogueManager : MonoBehaviour
             finally
             {
                 _isTTSPlaying = false;
+                if (ReferenceEquals(_currentTTSCancellation, ttsCts))
+                {
+                    _currentTTSCancellation = null;
+                }
+            }
+
+            if (IsRequestStale(requestSessionVersion))
+            {
+                FinishRequestIfCurrent(requestSessionVersion);
+                return;
             }
 
             if (thinkingBubble != null)
@@ -798,7 +896,7 @@ public class DialogueManager : MonoBehaviour
             }
         }
 
-        isWaitingForAI = false;
+        FinishRequestIfCurrent(requestSessionVersion);
     }
 
     /// <summary>
@@ -989,6 +1087,10 @@ public class DialogueManager : MonoBehaviour
 
     public void StartNewChat(CharacterProfile profileToUse)
     {
+        StopCurrentTTS();
+        _sessionVersion++;
+        isWaitingForAI = false;
+
         if (profileToUse == null)
         {
             profileToUse = ScriptableObject.CreateInstance<CharacterProfile>();
@@ -1049,6 +1151,7 @@ public class DialogueManager : MonoBehaviour
         // 开场白直接显示在屏幕上，不经过 AI
         AddMessageToUI(openingSafe, false);
         ExecuteCharacterAction(new AIResponseData { dialogue = openingSafe, emotion = "Smile", action = "Hello" });
+        _chatInitialized = true;
     }
 
     private string BuildSystemPrompt(string charName, string persona)

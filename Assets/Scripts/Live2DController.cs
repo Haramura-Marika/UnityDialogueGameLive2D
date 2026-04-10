@@ -33,23 +33,21 @@ public class Live2DController : MonoBehaviour
     // Update会每帧被调用一次，用于测试
     private void Update()
     {
-        #region --- 测试代码 (后续会被AI指令替代) ---
+        #region --- 测试代码  ---
 
-        // --- 表情控制 (按主键盘数字键 0-4) ---
-        if (Input.GetKeyDown(KeyCode.Alpha0)) { SetExpression(Expression.Default); }
-        if (Input.GetKeyDown(KeyCode.Alpha1)) { SetExpression(Expression.Proud); }
-        if (Input.GetKeyDown(KeyCode.Alpha2)) { SetExpression(Expression.Sad); }
-        if (Input.GetKeyDown(KeyCode.Alpha3)) { SetExpression(Expression.Smile); }
-        if (Input.GetKeyDown(KeyCode.Alpha4)) { SetExpression(Expression.Angry); }
+        // --- 表情控制 (数字键 1-5) ---
+        if (Input.GetKeyDown(KeyCode.Alpha1)) { SetExpression(Expression.Default); }
+        if (Input.GetKeyDown(KeyCode.Alpha2)) { SetExpression(Expression.Proud); }
+        if (Input.GetKeyDown(KeyCode.Alpha3)) { SetExpression(Expression.Sad); }
+        if (Input.GetKeyDown(KeyCode.Alpha4)) { SetExpression(Expression.Smile); }
+        if (Input.GetKeyDown(KeyCode.Alpha5)) { SetExpression(Expression.Angry); }
 
 
-        // --- 动作触发 (按字母键 Q, W, E, R, T) ---
-        // 我们为每一个真实的身体动作都分配一个按键和触发器名字
-        if (Input.GetKeyDown(KeyCode.Q)) { PlayActionTrigger("Hello"); }
-        if (Input.GetKeyDown(KeyCode.W)) { PlayActionTrigger("Thinking"); }
-        if (Input.GetKeyDown(KeyCode.E)) { PlayActionTrigger("Proud"); }  // 对应 02_Proud_Animation
-        if (Input.GetKeyDown(KeyCode.R)) { PlayActionTrigger("Shy"); }    // 对应 05_Shy_Animation
-        // 注意：Idle是默认返回状态，通常不需要手动触发
+        // --- 动作触发 (数字键 6-9) ---
+        if (Input.GetKeyDown(KeyCode.Alpha6)) { PlayActionTrigger("Hello"); }
+        if (Input.GetKeyDown(KeyCode.Alpha7)) { PlayActionTrigger("Thinking"); }
+        if (Input.GetKeyDown(KeyCode.Alpha8)) { PlayActionTrigger("Proud"); }    // 对应 02_Proud_Animation
+        if (Input.GetKeyDown(KeyCode.Alpha9)) { PlayActionTrigger("Shy"); }      // 对应 05_Shy_Animation
 
         #endregion
     }
@@ -65,9 +63,7 @@ public class Live2DController : MonoBehaviour
     public void SetExpression(Expression expression)
     {
         if (characterAnimator == null) return;
-
         float expressionValue = 0f;
-        // 注意：这里的数字需要和你Blend Tree里的阈值(Threshold)完全对应
         switch (expression)
         {
             case Expression.Default: expressionValue = 0f; break; // 对应 06_Default_Exp

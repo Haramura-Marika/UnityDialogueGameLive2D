@@ -22,6 +22,7 @@ namespace AI.TTS
         public string ApiKey { get; set; }
         public string GroupId { get; set; }
         public string VoiceId { get; set; }
+        public string Model { get; set; }
         public string LanguageType { get; set; } // 仅用于Qwen 等服务
     }
 
@@ -38,31 +39,29 @@ namespace AI.TTS
             string apiKey = options?.ApiKey;
             string groupId = options?.GroupId;
             string voiceId = options?.VoiceId;
+            string model = options?.Model;
+
+            var config = AIAPISettings.Instance?.MinimaxTTS;
+            if (config != null)
+            {
+                if (string.IsNullOrEmpty(apiKey)) apiKey = config.ApiKey;
+                if (string.IsNullOrEmpty(groupId)) groupId = config.GroupId;
+                if (string.IsNullOrEmpty(voiceId)) voiceId = config.VoiceId;
+                if (string.IsNullOrEmpty(model)) model = config.Model;
+            }
 
             if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(groupId))
             {
-                if (AIAPISettings.Instance == null || !AIAPISettings.Instance.MinimaxTTS.IsConfigured())
-                {
-                    Debug.LogWarning("[Minimax TTS] API Key 或 GroupId 未配置！请在 Resources/APISettings 中设置。");
-                    return;
-                }
-                
-                var config = AIAPISettings.Instance.MinimaxTTS;
-                apiKey = config.ApiKey;
-                groupId = config.GroupId;
-                
-                // 如果没有指定 voice，使用配置中的默认值
-                if (string.IsNullOrEmpty(voiceId))
-                    voiceId = config.VoiceId;
-            }
-
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                Debug.LogWarning("[Minimax TTS] 未配置 API Key");
+                Debug.LogWarning("[Minimax TTS] API Key 或 GroupId 未配置！请在 Resources/APISettings 中设置。");
                 return;
             }
 
-            Debug.Log($"[Minimax TTS] 开始合成 - 文本长度: {text?.Length ?? 0}, 语音: {voiceId}");
+            if (string.IsNullOrEmpty(model))
+            {
+                model = "speech-02-turbo";
+            }
+
+            Debug.Log($"[Minimax TTS] 开始合成 - 模型: {model}, 文本长度: {text?.Length ?? 0}, 语音: {voiceId}");
 
             webSocket = new ClientWebSocket();
             string url = "wss://api.minimaxi.com/ws/v1/t2a_v2";
@@ -79,7 +78,7 @@ namespace AI.TTS
                     return;
                 }
 
-                var startRequest = new MinimaxTaskStartRequest(voiceId);
+                var startRequest = new MinimaxTaskStartRequest(voiceId, model);
                 await SendJsonMessage(startRequest, ct);
                 var startResponse = await ReceiveJsonMessage<MinimaxBaseResponse>(ct);
                 if (startResponse?.@event != "task_started")
@@ -201,12 +200,13 @@ namespace AI.TTS
     public class MinimaxTaskStartRequest
     {
         public string @event => "task_start";
-        public string model => "speech-02-turbo";
+        public string model { get; set; }
         public VoiceSetting voice_setting { get; set; }
         public AudioSetting audio_setting { get; set; }
 
-        public MinimaxTaskStartRequest(string voiceId)
+        public MinimaxTaskStartRequest(string voiceId, string model)
         {
+            this.model = string.IsNullOrEmpty(model) ? "speech-02-turbo" : model;
             this.voice_setting = new VoiceSetting { voice_id = voiceId };
             this.audio_setting = new AudioSetting();
         }

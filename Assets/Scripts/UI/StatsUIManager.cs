@@ -3,12 +3,12 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// 管理并显示当前的数值信息（好感度、心情、精力、压力、信任度�?
+/// 管理并显示当前的数值信息（好感度、心情、精力、压力、信任度）
 /// 使用 Slider 组件作为进度条，避免图片拉伸变形
 /// </summary>
 public class StatsUIManager : MonoBehaviour
 {
-    [Header("Slider 引用 (�?Inspector 中拖�?Slider 对象)")] [SerializeField]
+    [Header("Slider 引用 (在 Inspector 中拖入 Slider 对象)")] [SerializeField]
     private Slider affinitySlider;
 
     [SerializeField] private Slider moodSlider;
@@ -16,7 +16,7 @@ public class StatsUIManager : MonoBehaviour
     [SerializeField] private Slider stressSlider;
     [SerializeField] private Slider trustSlider;
 
-    [Header("UI 文本引用 (可选，用于显示具体数�?")] [SerializeField]
+    [Header("UI 文本引用 (可选，用于显示具体数值)")] [SerializeField]
     private TextMeshProUGUI affinityText;
 
     [SerializeField] private TextMeshProUGUI moodText;
@@ -27,7 +27,7 @@ public class StatsUIManager : MonoBehaviour
     [Header("动画设置")] [SerializeField] private float lerpSpeed = 5f;
     
     // 目标值（用于平滑过渡）
-    // 默认均从 50 (对应数值50) 开始显�?
+    // 默认均从 50 (对应数值50) 开始显示
     private float _targetAffinity = 50f;
     private float _targetMood = 50f;
     private float _targetEnergy = 50f;
@@ -58,7 +58,7 @@ public class StatsUIManager : MonoBehaviour
             );
         }
 
-        // 首次直接设置，不做动�?
+        // 首次直接设置，不做动画
         ApplySliderImmediate();
     }
 
@@ -74,7 +74,7 @@ public class StatsUIManager : MonoBehaviour
 
     private void Update()
     {
-        // 平滑过渡到目标�?
+        // 平滑过渡到目标
         float t = Time.unscaledDeltaTime * lerpSpeed;
         LerpSlider(affinitySlider, _targetAffinity, t);
         LerpSlider(moodSlider, _targetMood, t);
