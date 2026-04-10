@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
+using AI.Config;
 
 namespace AI.Providers
 {
@@ -33,7 +34,7 @@ namespace AI.Providers
                 return "{\"dialogue\":\"请在 APISettings 配置 Gemini API 密钥\", \"emotion\":\"Sad\", \"action\":\"\"}";
             }
 
-            var streaming = ChatConfig.GetStreamingEnabled("Gemini", false);
+            var streaming = ChatConfig.GetStreamingEnabled("Gemini", GeminiConfig.DefaultStreamingEnabled);
             if (!streaming)
             {
                 return await SendOnce(apiKey, chatHistory);
@@ -145,9 +146,9 @@ namespace AI.Providers
         private static async Task<string> SendOnce(string apiKey, List<ChatMessage> chatHistory)
         {
             // ? 从配置读取模型名称
-            string model = ChatConfig.GetModel("Gemini", "gemini-2.0-flash-exp");
-            float temperature = ChatConfig.GetTemperature("Gemini", 1.0f);
-            int maxOutputTokens = ChatConfig.GetMaxTokens("Gemini", 8192);
+            string model = ChatConfig.GetModel("Gemini", GeminiConfig.DefaultModel);
+            float temperature = ChatConfig.GetTemperature("Gemini", GeminiConfig.DefaultTemperature);
+            int maxOutputTokens = ChatConfig.GetMaxTokens("Gemini", GeminiConfig.DefaultMaxTokens);
 
             // ? 动态构建 API URL
             string apiUrl = $"{apiUrlBase}{model}:generateContent";
@@ -217,9 +218,9 @@ namespace AI.Providers
             }
 
             // 从配置读取模型名称
-            string model = ChatConfig.GetModel("Gemini", "gemini-2.0-flash-exp");
-            float temperature = ChatConfig.GetTemperature("Gemini", 1.0f);
-            int maxOutputTokens = ChatConfig.GetMaxTokens("Gemini", 8192);
+            string model = ChatConfig.GetModel("Gemini", GeminiConfig.DefaultModel);
+            float temperature = ChatConfig.GetTemperature("Gemini", GeminiConfig.DefaultTemperature);
+            int maxOutputTokens = ChatConfig.GetMaxTokens("Gemini", GeminiConfig.DefaultMaxTokens);
 
             // ? 流式 API URL（使用 streamGenerateContent 并添加 alt=sse）
             string apiUrl = $"{apiUrlBase}{model}:streamGenerateContent?alt=sse";

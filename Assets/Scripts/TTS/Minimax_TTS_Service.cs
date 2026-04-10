@@ -58,7 +58,7 @@ namespace AI.TTS
 
             if (string.IsNullOrEmpty(model))
             {
-                model = "speech-02-turbo";
+                model = MinimaxTTSConfig.DefaultModel;
             }
 
             Debug.Log($"[Minimax TTS] 开始合成 - 模型: {model}, 文本长度: {text?.Length ?? 0}, 语音: {voiceId}");
@@ -206,7 +206,7 @@ namespace AI.TTS
 
         public MinimaxTaskStartRequest(string voiceId, string model)
         {
-            this.model = string.IsNullOrEmpty(model) ? "speech-02-turbo" : model;
+            this.model = string.IsNullOrEmpty(model) ? MinimaxTTSConfig.DefaultModel : model;
             this.voice_setting = new VoiceSetting { voice_id = voiceId };
             this.audio_setting = new AudioSetting();
         }

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
+using AI.Config;
 
 namespace AI.Providers
 {
@@ -41,7 +42,7 @@ namespace AI.Providers
                 return "{\"dialogue\":\"Qwen API Key 未配置\", \"emotion\":\"Sad\", \"action\":\"\"}";
             }
 
-            var streaming = ChatConfig.GetStreamingEnabled("Qwen", false);
+            var streaming = ChatConfig.GetStreamingEnabled("Qwen", QwenConfig.DefaultStreamingEnabled);
             if (!streaming)
             {
                 return await SendMessageOnce(apiKey, chatHistory);
@@ -64,9 +65,9 @@ namespace AI.Providers
             // 转换为接口格式
             var messages = BuildMessages(chatHistory);
 
-            var model = ChatConfig.GetModel("Qwen", "qwen-plus");
-            var temperature = ChatConfig.GetTemperature("Qwen", 1.0f);
-            var maxTokens = ChatConfig.GetMaxTokens("Qwen", 8192);
+            var model = ChatConfig.GetModel("Qwen", QwenConfig.DefaultModel);
+            var temperature = ChatConfig.GetTemperature("Qwen", QwenConfig.DefaultTemperature);
+            var maxTokens = ChatConfig.GetMaxTokens("Qwen", QwenConfig.DefaultMaxTokens);
 
             var reqBody = new
             {
@@ -124,9 +125,9 @@ namespace AI.Providers
             }
 
             var messages = BuildMessages(chatHistory);
-            var model = ChatConfig.GetModel("Qwen", "qwen-plus");
-            var temperature = ChatConfig.GetTemperature("Qwen", 1.0f);
-            var maxTokens = ChatConfig.GetMaxTokens("Qwen", 8192);
+            var model = ChatConfig.GetModel("Qwen", QwenConfig.DefaultModel);
+            var temperature = ChatConfig.GetTemperature("Qwen", QwenConfig.DefaultTemperature);
+            var maxTokens = ChatConfig.GetMaxTokens("Qwen", QwenConfig.DefaultMaxTokens);
 
             var reqBody = new
             {

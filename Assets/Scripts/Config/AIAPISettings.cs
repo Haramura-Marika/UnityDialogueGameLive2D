@@ -51,12 +51,17 @@ namespace AI.Config
     [Serializable]
     public class DeepSeekConfig : APIConfigBase
     {
+        public const string DefaultModel = "deepseek-chat";
+        public const float DefaultTemperature = 1.3f;
+        public const int DefaultMaxTokens = 8192;
+        public const bool DefaultStreamingEnabled = true;
+
         protected override string EnvVarName => "DEEPSEEK_API_KEY";
 
-        [SerializeField] private string model = "deepseek-chat";
-        [SerializeField] [Range(0f, 2f)] private float temperature = 1.0f;
-        [SerializeField] private int maxTokens = 8192;
-        [SerializeField] private bool streamingEnabled = false; // 是否流式输出
+        [SerializeField] private string model = DefaultModel;
+        [SerializeField] [Range(0f, 2f)] private float temperature = DefaultTemperature;
+        [SerializeField] private int maxTokens = DefaultMaxTokens;
+        [SerializeField] private bool streamingEnabled = DefaultStreamingEnabled; // 是否流式输出
 
         public string Model
         {
@@ -90,12 +95,17 @@ namespace AI.Config
     [Serializable]
     public class GeminiConfig : APIConfigBase
     {
+        public const string DefaultModel = "gemini-3-flash-preview";
+        public const float DefaultTemperature = 1.3f;
+        public const int DefaultMaxTokens = 65536;
+        public const bool DefaultStreamingEnabled = true;
+
         protected override string EnvVarName => "GEMINI_API_KEY";
 
-        [SerializeField] private string model = "gemini-2.0-flash-exp";
-        [SerializeField] [Range(0f, 2f)] private float temperature = 1.0f;
-        [SerializeField] private int maxTokens = 8192;
-        [SerializeField] private bool streamingEnabled = false; // 是否流式输出
+        [SerializeField] private string model = DefaultModel;
+        [SerializeField] [Range(0f, 2f)] private float temperature = DefaultTemperature;
+        [SerializeField] private int maxTokens = DefaultMaxTokens;
+        [SerializeField] private bool streamingEnabled = DefaultStreamingEnabled; // 是否流式输出
 
         public string Model
         {
@@ -129,12 +139,17 @@ namespace AI.Config
     [Serializable]
     public class QwenConfig : APIConfigBase
     {
+        public const string DefaultModel = "qwen-flash";
+        public const float DefaultTemperature = 1.3f;
+        public const int DefaultMaxTokens = 2048;
+        public const bool DefaultStreamingEnabled = true;
+
         protected override string EnvVarName => "QWEN_API_KEY";
 
-        [SerializeField] private string model = "qwen-plus";
-        [SerializeField] [Range(0f, 2f)] private float temperature = 1.0f;
-        [SerializeField] private int maxTokens = 8192;
-        [SerializeField] private bool streamingEnabled = false; // 是否流式输出
+        [SerializeField] private string model = DefaultModel;
+        [SerializeField] [Range(0f, 2f)] private float temperature = DefaultTemperature;
+        [SerializeField] private int maxTokens = DefaultMaxTokens;
+        [SerializeField] private bool streamingEnabled = DefaultStreamingEnabled; // 是否流式输出
 
         public string Model
         {
@@ -168,11 +183,15 @@ namespace AI.Config
     [Serializable]
     public class QwenASRConfig : APIConfigBase
     {
+        public const string DefaultModel = "paraformer-realtime-v2";
+        public const bool DefaultEnableLid = true;
+        public const bool DefaultEnableItn = false;
+
         protected override string EnvVarName => "QWEN_ASR_API_KEY";
 
-        [SerializeField] private string model = "paraformer-realtime-v2";
-        [SerializeField] private bool enableLid = true;
-        [SerializeField] private bool enableItn = false;
+        [SerializeField] private string model = DefaultModel;
+        [SerializeField] private bool enableLid = DefaultEnableLid;
+        [SerializeField] private bool enableItn = DefaultEnableItn;
 
         public string Model
         {
@@ -199,12 +218,16 @@ namespace AI.Config
     [Serializable]
     public class MinimaxTTSConfig : APIConfigBase
     {
+        public const string DefaultVoiceId = "female-shaonv-jingpin";
+        public const string DefaultModel = "speech-2.6-turbo";
+        public const int DefaultSampleRate = 16000;
+
         protected override string EnvVarName => "MINIMAX_API_KEY";
 
         [SerializeField] private string groupId = "";
-        [SerializeField] private string voiceId = "male-qn-qingse";
-        [SerializeField] private string model = "speech-02-turbo";
-        [SerializeField] private int sampleRate = 16000;
+        [SerializeField] private string voiceId = DefaultVoiceId;
+        [SerializeField] private string model = DefaultModel;
+        [SerializeField] private int sampleRate = DefaultSampleRate;
 
         public string GroupId
         {
@@ -242,13 +265,18 @@ namespace AI.Config
     [Serializable]
     public class MinimaxConfig : APIConfigBase
     {
+        public const string DefaultModel = "MiniMax-M2.5-highspeed";
+        public const float DefaultTemperature = 1.0f;
+        public const int DefaultMaxTokens = 8192;
+        public const bool DefaultStreamingEnabled = true;
+
         protected override string EnvVarName => "MINIMAX_API_KEY";
 
         [SerializeField] private string groupId = "";
-        [SerializeField] private string model = "MiniMax-M2.5-highspeed";
-        [SerializeField] [Range(0f, 2f)] private float temperature = 1.0f;
-        [SerializeField] private int maxTokens = 8192;
-        [SerializeField] private bool streamingEnabled = false;
+        [SerializeField] private string model = DefaultModel;
+        [SerializeField] [Range(0f, 2f)] private float temperature = DefaultTemperature;
+        [SerializeField] private int maxTokens = DefaultMaxTokens;
+        [SerializeField] private bool streamingEnabled = DefaultStreamingEnabled;
 
         public string GroupId { get => groupId; set => groupId = value; }
         public string Model { get => model; set => model = value; }

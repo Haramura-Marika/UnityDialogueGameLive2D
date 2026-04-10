@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
+using AI.Config;
 
 namespace AI.Providers
 {
@@ -35,7 +36,7 @@ namespace AI.Providers
                 return "{\"dialogue\":\"请在 Resources/APISettings 配置 DeepSeek API 密钥\", \"emotion\":\"Sad\", \"action\":\"\"}";
             }
 
-            var streaming = ChatConfig.GetStreamingEnabled("DeepSeek", false);
+            var streaming = ChatConfig.GetStreamingEnabled("DeepSeek", DeepSeekConfig.DefaultStreamingEnabled);
             if (!streaming)
             {
                 return await SendOnce(apiKey, chatHistory);
@@ -66,9 +67,9 @@ namespace AI.Providers
                 }
             }
 
-            var model = ChatConfig.GetModel("DeepSeek", "deepseek-chat");
-            var temperature = ChatConfig.GetTemperature("DeepSeek", 1.0f);
-            var maxTokens = ChatConfig.GetMaxTokens("DeepSeek", 8192);
+            var model = ChatConfig.GetModel("DeepSeek", DeepSeekConfig.DefaultModel);
+            var temperature = ChatConfig.GetTemperature("DeepSeek", DeepSeekConfig.DefaultTemperature);
+            var maxTokens = ChatConfig.GetMaxTokens("DeepSeek", DeepSeekConfig.DefaultMaxTokens);
 
             var req = new
             {
@@ -136,9 +137,9 @@ namespace AI.Providers
                 }
             }
 
-            var model = ChatConfig.GetModel("DeepSeek", "deepseek-chat");
-            var temperature = ChatConfig.GetTemperature("DeepSeek", 1.0f);
-            var maxTokens = ChatConfig.GetMaxTokens("DeepSeek", 8192);
+            var model = ChatConfig.GetModel("DeepSeek", DeepSeekConfig.DefaultModel);
+            var temperature = ChatConfig.GetTemperature("DeepSeek", DeepSeekConfig.DefaultTemperature);
+            var maxTokens = ChatConfig.GetMaxTokens("DeepSeek", DeepSeekConfig.DefaultMaxTokens);
 
             var req = new
             {
