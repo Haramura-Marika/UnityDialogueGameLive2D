@@ -9,6 +9,7 @@ using AI.Chat; // 引入 CharacterProfile 所在的命名空间
 using System;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Text;
 using System.Threading;
 using Stopwatch = System.Diagnostics.Stopwatch;
@@ -31,6 +32,7 @@ public class DialogueManager : MonoBehaviour
     private TextAsset characterCardFile; // 支持拖拽文本文件
 
     private CharacterProfile _activeProfile; // 当前激活的角色配置
+    private string _characterCardFilePath;
     private bool isWaitingForAI = false;
     private List<ChatMessage> chatHistory;
 
@@ -67,6 +69,7 @@ public class DialogueManager : MonoBehaviour
     private bool _chatInitialized = false;
     private bool _chatInitializing = false;
     private int _sessionVersion = 0;
+    private const string CharacterCardPathPrefsKeyPrefix = "selected_character_card_path";
 
     private void Awake()
     {
@@ -158,6 +161,7 @@ public class DialogueManager : MonoBehaviour
 
         // 刷新当前用户名（登录后才有值）
         _currentUsername = PlayerPrefs.GetString("current_user", string.Empty);
+        RestoreSelectedCharacterCardPath();
 
         StopCurrentTTS();
         isWaitingForAI = false;
@@ -177,17 +181,7 @@ public class DialogueManager : MonoBehaviour
                         Debug.Log(
                             $"[DialogueManager] 从数据库加载用户 {_currentUsername} 的历史记录 (角色: {savedHistory.characterName}, 消息数: {savedHistory.chatHistory.Count})");
 
-                        var textAsset = Resources.Load<TextAsset>($"Characters/{savedHistory.characterName}");
-                        if (textAsset != null)
-                        {
-                            _activeProfile =
-                                CharacterCardParser.ParseFromText(textAsset.text, savedHistory.characterName);
-                        }
-                        else
-                        {
-                            _activeProfile = ScriptableObject.CreateInstance<CharacterProfile>();
-                            _activeProfile.characterName = savedHistory.characterName;
-                        }
+                        _activeProfile = BuildProfileForCharacterName(savedHistory.characterName);
 
                         this.chatHistory = savedHistory.chatHistory;
                         currentAffinity = savedHistory.affinity;
@@ -278,7 +272,48 @@ public class DialogueManager : MonoBehaviour
         }
 
         var profile = BuildProfileFromCard(textAsset, characterName);
+        _characterCardFilePath = null;
+        characterCardFile = textAsset;
+        PersistSelectedCharacterCardPath();
+        ClearAutosaveForCurrentUser();
         StartNewChat(profile);
+    }
+
+    public string GetCharacterCardSelectionDirectory()
+    {
+        if (!string.IsNullOrEmpty(_characterCardFilePath))
+        {
+            string selectedDirectory = Path.GetDirectoryName(_characterCardFilePath);
+            if (!string.IsNullOrEmpty(selectedDirectory) && Directory.Exists(selectedDirectory))
+            {
+                return selectedDirectory;
+            }
+        }
+
+        string resourcesDirectory = Path.Combine(Application.dataPath, "Resources", "Characters");
+        if (Directory.Exists(resourcesDirectory))
+        {
+            return resourcesDirectory;
+        }
+
+        return Application.dataPath;
+    }
+
+    public bool TrySwitchCharacterCardFromFile(string filePath)
+    {
+        if (!TryBuildProfileFromFilePath(filePath, out var profile))
+        {
+            return false;
+        }
+
+        _characterCardFilePath = Path.GetFullPath(filePath);
+        characterCardFile = null;
+        PersistSelectedCharacterCardPath();
+        ClearAutosaveForCurrentUser();
+        StartNewChat(profile);
+
+        Debug.Log($"[DialogueManager] 已切换角色卡文件: {_characterCardFilePath}");
+        return true;
     }
 
     /// <summary>
@@ -322,16 +357,7 @@ public class DialogueManager : MonoBehaviour
                 StopCurrentTTS();
                 isWaitingForAI = false;
 
-                var textAsset = Resources.Load<TextAsset>($"Characters/{historyData.characterName}");
-                if (textAsset != null)
-                {
-                    _activeProfile = CharacterCardParser.ParseFromText(textAsset.text, historyData.characterName);
-                }
-                else
-                {
-                    _activeProfile = ScriptableObject.CreateInstance<CharacterProfile>();
-                    _activeProfile.characterName = historyData.characterName;
-                }
+                _activeProfile = BuildProfileForCharacterName(historyData.characterName);
 
                 this.chatHistory = historyData.chatHistory;
                 currentAffinity = historyData.affinity;
@@ -386,16 +412,7 @@ public class DialogueManager : MonoBehaviour
         StopCurrentTTS();
         isWaitingForAI = false;
 
-        var textAsset = Resources.Load<TextAsset>($"Characters/{data.characterName}");
-        if (textAsset != null)
-        {
-            _activeProfile = CharacterCardParser.ParseFromText(textAsset.text, data.characterName);
-        }
-        else
-        {
-            _activeProfile = ScriptableObject.CreateInstance<CharacterProfile>();
-            _activeProfile.characterName = data.characterName;
-        }
+        _activeProfile = BuildProfileForCharacterName(data.characterName);
 
         this.chatHistory = data.chatHistory;
         currentAffinity = data.affinity;
@@ -451,6 +468,7 @@ public class DialogueManager : MonoBehaviour
         _chatInitializing = false;
         _activeProfile = null;
         _currentUsername = null;
+        _characterCardFilePath = null;
         chatHistory = null;
 
         ClearUI();
@@ -615,28 +633,69 @@ public class DialogueManager : MonoBehaviour
         _sessionVersion++;
         int requestSessionVersion = _sessionVersion;
 
-        AddMessageToUI(message, true);
-        chatHistory.Add(new ChatMessage
-            { role = "user", parts = new List<ChatPart> { new ChatPart { text = message } } });
-
-        // 新建"思考中"气泡
-        MessageBubble thinkingBubble = AddMessageToUI("...", false);
-
-        // 构造发送给AI的对话历史（克隆一份，把当前状态注入到最后一条用户消息中，避免污染UI和数据库存档）
-        var chatHistoryForAI = new List<ChatMessage>();
-        foreach (var msg in chatHistory)
+        try
         {
-            chatHistoryForAI.Add(new ChatMessage
+            AddMessageToUI(message, true);
+            chatHistory.Add(new ChatMessage
+                { role = "user", parts = new List<ChatPart> { new ChatPart { text = message } } });
+
+            MessageBubble thinkingBubble = AddMessageToUI("...", false);
+            var chatHistoryForAI = CloneChatHistoryForAI();
+            AppendStatsHintToLastUserMessage(chatHistoryForAI);
+
+            string aiResponseJson = await RequestAIResponseJsonAsync(chatHistoryForAI, thinkingBubble, requestSessionVersion);
+            if (IsRequestStale(requestSessionVersion))
+            {
+                return;
+            }
+
+            CommitAssistantResponse(aiResponseJson);
+        }
+        finally
+        {
+            FinishRequestIfCurrent(requestSessionVersion);
+        }
+    }
+
+    private List<ChatMessage> CloneChatHistoryForAI(List<ChatMessage> sourceHistory = null)
+    {
+        var clonedHistory = new List<ChatMessage>();
+        var historySource = sourceHistory ?? chatHistory;
+        if (historySource == null)
+        {
+            return clonedHistory;
+        }
+
+        foreach (var msg in historySource)
+        {
+            clonedHistory.Add(new ChatMessage
             {
                 role = msg.role,
                 parts = new List<ChatPart> { new ChatPart { text = msg.parts != null && msg.parts.Count > 0 ? msg.parts[0].text : "" } }
             });
         }
 
-        var lastUserMsg = chatHistoryForAI[chatHistoryForAI.Count - 1];
-        lastUserMsg.parts[0].text += $"\n\n[系统提示：你当前的状态值（范围0-100）：好感度={currentAffinity}，心情={currentMood}，精力={currentEnergy}，压力={currentStress}，信任度={currentTrust}。请结合这些状态值以及历史对话，调整你的预期、态度和用词，并在返回的JSON中给出合理的变化量。]";
+        return clonedHistory;
+    }
 
-        // 根据当前 Provider 与配置，决定是否使用流式（支持 Qwen、DeepSeek 和 Gemini）
+    private void AppendStatsHintToLastUserMessage(List<ChatMessage> chatHistoryForAI)
+    {
+        if (chatHistoryForAI == null || chatHistoryForAI.Count == 0)
+        {
+            return;
+        }
+
+        var lastUserMsg = chatHistoryForAI[chatHistoryForAI.Count - 1];
+        if (lastUserMsg.parts == null || lastUserMsg.parts.Count == 0)
+        {
+            lastUserMsg.parts = new List<ChatPart> { new ChatPart { text = string.Empty } };
+        }
+
+        lastUserMsg.parts[0].text += $"\n\n[系统提示：你当前的状态值（范围0-100）：好感度={currentAffinity}，心情={currentMood}，精力={currentEnergy}，压力={currentStress}，信任度={currentTrust}。请结合这些状态值以及历史对话，调整你的预期、态度和用词，并在返回的JSON中给出合理的变化量。]";
+    }
+
+    private async Task<string> RequestAIResponseJsonAsync(List<ChatMessage> chatHistoryForAI, MessageBubble thinkingBubble, int requestSessionVersion)
+    {
         var provider = AIService.GetProvider();
         string serviceProp = provider == AIModelProvider.Qwen ? "Qwen"
             : provider == AIModelProvider.DeepSeek ? "DeepSeek"
@@ -654,31 +713,31 @@ public class DialogueManager : MonoBehaviour
             CancelCurrentAIStream();
             var cts = new CancellationTokenSource();
             _currentAIStreamCancellation = cts;
-            var sb = new StringBuilder();
-            var tcs = new TaskCompletionSource<string>();
 
-            // 流式 TTS 控制：边生成边播放（分句播放）
-            StringBuilder ttsBuffer = new StringBuilder(); // TTS缓冲区
-            int lastExtractedPosition = 0; // 上次提取到的位置（防止重复提取）
+            try
+            {
+                var sb = new StringBuilder();
+                var tcs = new TaskCompletionSource<string>();
+                StringBuilder ttsBuffer = new StringBuilder();
+                int lastExtractedPosition = 0;
 
-            // 创建 TTS CancellationToken
-            _currentTTSCancellation = new CancellationTokenSource();
+                _currentTTSCancellation = new CancellationTokenSource();
 
-            // 启动流式
-            _ = AIService.GetAIResponseStream(
-                chatHistoryForAI,
-                onDelta: delta =>
-                {
-                    if (string.IsNullOrEmpty(delta)) return;
-                    if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion)) return;
-                    sb.Append(delta);
-
-                    string accumulated = sb.ToString();
-                    string partialDialogue = TryExtractDialoguePartial(accumulated);
-
-                    if (!string.IsNullOrEmpty(partialDialogue))
+                _ = AIService.GetAIResponseStream(
+                    chatHistoryForAI,
+                    onDelta: delta =>
                     {
-                        // 更新UI显示
+                        if (string.IsNullOrEmpty(delta)) return;
+                        if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion)) return;
+                        sb.Append(delta);
+
+                        string accumulated = sb.ToString();
+                        string partialDialogue = TryExtractDialoguePartial(accumulated);
+                        if (string.IsNullOrEmpty(partialDialogue))
+                        {
+                            return;
+                        }
+
                         float now = (float)_streamStopwatch.Elapsed.TotalSeconds;
                         if ((now - _lastStreamUiUpdateTime) >= StreamUiInterval)
                         {
@@ -692,83 +751,87 @@ public class DialogueManager : MonoBehaviour
                             });
                         }
 
-                        // 流式 TTS：检查是否有新的完整句子可以播放
-                        // 只处理从 lastExtractedPosition 开始的新内容
-                        if (partialDialogue.Length > lastExtractedPosition)
+                        if (partialDialogue.Length <= lastExtractedPosition)
                         {
-                            string newContent = partialDialogue.Substring(lastExtractedPosition);
-                            ttsBuffer.Append(newContent);
-                            lastExtractedPosition = partialDialogue.Length; // 更新已提取位置
-
-                            // 检查是否包含句子结束标记（。！？\n等）
-                            string bufferedText = ttsBuffer.ToString();
-                            int sentenceEnd = FindSentenceEnd(bufferedText);
-
-                            if (sentenceEnd > 0)
-                            {
-                                // 找到完整句子，立即播放
-                                string sentenceToPlay = bufferedText.Substring(0, sentenceEnd + 1).Trim();
-                                if (!string.IsNullOrEmpty(sentenceToPlay))
-                                {
-                                    _isTTSPlaying = true;
-
-                                    // 清空已提取的部分
-                                    ttsBuffer.Clear();
-                                    if (sentenceEnd + 1 < bufferedText.Length)
-                                    {
-                                        ttsBuffer.Append(bufferedText.Substring(sentenceEnd + 1));
-                                    }
-
-                                    // 将 TTS 播放请求加入队列，由主线程 Update 处理
-                                    UnityEngine.Debug.Log($"[DialogueManager] 分句TTS入队: {sentenceToPlay}");
-                                    _ttsQueue.Enqueue((sentenceToPlay, null));
-                                }
-                            }
+                            return;
                         }
-                    }
-                },
-                onCompleted: finalText => { tcs.TrySetResult(finalText); },
-                onError: err =>
-                {
-                    if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion))
+
+                        string newContent = partialDialogue.Substring(lastExtractedPosition);
+                        ttsBuffer.Append(newContent);
+                        lastExtractedPosition = partialDialogue.Length;
+
+                        string bufferedText = ttsBuffer.ToString();
+                        int sentenceEnd = FindSentenceEnd(bufferedText);
+                        if (sentenceEnd <= 0)
+                        {
+                            return;
+                        }
+
+                        string sentenceToPlay = bufferedText.Substring(0, sentenceEnd + 1).Trim();
+                        if (string.IsNullOrEmpty(sentenceToPlay))
+                        {
+                            return;
+                        }
+
+                        _isTTSPlaying = true;
+                        ttsBuffer.Clear();
+                        if (sentenceEnd + 1 < bufferedText.Length)
+                        {
+                            ttsBuffer.Append(bufferedText.Substring(sentenceEnd + 1));
+                        }
+
+                        UnityEngine.Debug.Log($"[DialogueManager] 分句TTS入队: {sentenceToPlay}");
+                        _ttsQueue.Enqueue((sentenceToPlay, null));
+                    },
+                    onCompleted: finalText => { tcs.TrySetResult(finalText); },
+                    onError: err =>
                     {
-                        tcs.TrySetException(new OperationCanceledException());
-                        return;
+                        if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion))
+                        {
+                            tcs.TrySetException(new OperationCanceledException());
+                            return;
+                        }
+
+                        UnityEngine.Debug.LogError($"[DialogueManager] 流式错误: {err}");
+                        tcs.TrySetException(new Exception(err ?? "stream error"));
+                    },
+                    ct: cts.Token);
+
+                string finalJson = null;
+                try
+                {
+                    finalJson = await tcs.Task;
+                }
+                catch (Exception ex)
+                {
+                    if (!cts.IsCancellationRequested && !IsRequestStale(requestSessionVersion))
+                    {
+                        UnityEngine.Debug.LogError($"[DialogueManager] 流式失败: {ex.Message}");
+                        if (thinkingBubble != null)
+                        {
+                            thinkingBubble.SetText("抱歉，我好像走神了...");
+                        }
+                        StopCurrentTTS();
                     }
 
-                    UnityEngine.Debug.LogError($"[DialogueManager] 流式错误: {err}");
-                    tcs.TrySetException(new Exception(err ?? "stream error"));
-                },
-                ct: cts.Token);
-
-            string finalJson = null;
-            try
-            {
-                finalJson = await tcs.Task; // 等待最终JSON
-            }
-            catch (Exception ex)
-            {
-                if (!cts.IsCancellationRequested && !IsRequestStale(requestSessionVersion))
-                {
-                    UnityEngine.Debug.LogError($"[DialogueManager] 流式失败: {ex.Message}");
-                    if (thinkingBubble != null) thinkingBubble.SetText("抱歉，我好像走神了...");
-                    StopCurrentTTS();
+                    return null;
                 }
-                FinishRequestIfCurrent(requestSessionVersion);
-                return;
-            }
 
-            if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion))
-            {
-                FinishRequestIfCurrent(requestSessionVersion);
-                return;
-            }
+                if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion))
+                {
+                    return null;
+                }
 
-            // 解析AI返回的JSON
-            AIResponseData responseData = ParseAIResponse(finalJson);
-            if (responseData != null)
-            {
-                // 等待 TTS 队列清空
+                AIResponseData responseData = ParseAIResponse(finalJson);
+                if (responseData == null)
+                {
+                    if (thinkingBubble != null)
+                    {
+                        thinkingBubble.SetText("抱歉，我好像走神了...");
+                    }
+                    return null;
+                }
+
                 int waitCount = 0;
                 while ((_ttsQueue.Count > 0 || _isProcessingTTS) && waitCount < 200)
                 {
@@ -778,11 +841,9 @@ public class DialogueManager : MonoBehaviour
 
                 if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion))
                 {
-                    FinishRequestIfCurrent(requestSessionVersion);
-                    return;
+                    return null;
                 }
 
-                // 播放剩余缓冲区中的文本（如果有）
                 string remainingText = ttsBuffer.ToString().Trim();
                 if (!string.IsNullOrEmpty(remainingText))
                 {
@@ -805,98 +866,191 @@ public class DialogueManager : MonoBehaviour
 
                 if (cts.IsCancellationRequested || IsRequestStale(requestSessionVersion))
                 {
-                    FinishRequestIfCurrent(requestSessionVersion);
-                    return;
+                    return null;
                 }
 
-                // 确保最终文本显示在UI上
                 if (thinkingBubble != null)
                 {
                     thinkingBubble.SetText(responseData.dialogue);
                 }
 
-                ExecuteCharacterAction(responseData);
-                chatHistory.Add(new ChatMessage
-                    { role = "assistant", parts = new List<ChatPart> { new ChatPart { text = finalJson } } });
-
-                // 自动保存到数据库
-                AutoSaveToDatabase();
-            }
-            else
-            {
-                if (thinkingBubble != null) thinkingBubble.SetText("抱歉，我好像走神了...");
-            }
-
-            if (ReferenceEquals(_currentAIStreamCancellation, cts))
-            {
-                _currentAIStreamCancellation = null;
-            }
-            FinishRequestIfCurrent(requestSessionVersion);
-            return;
-        }
-
-        // 非流式原流程
-        string aiResponseJson = await AIService.GetAIResponse(chatHistoryForAI);
-        if (IsRequestStale(requestSessionVersion))
-        {
-            FinishRequestIfCurrent(requestSessionVersion);
-            return;
-        }
-
-        AIResponseData responseData2 = ParseAIResponse(aiResponseJson);
-
-        if (responseData2 != null)
-        {
-            _currentTTSCancellation = new CancellationTokenSource();
-            var ttsCts = _currentTTSCancellation;
-            _isTTSPlaying = true;
-            try
-            {
-                if (audioManager != null)
-                {
-                    await audioManager.PlayTTS(responseData2.dialogue, ttsCts.Token);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                UnityEngine.Debug.Log("[DialogueManager] TTS 被用户打断");
+                return finalJson;
             }
             finally
             {
-                _isTTSPlaying = false;
-                if (ReferenceEquals(_currentTTSCancellation, ttsCts))
+                if (ReferenceEquals(_currentAIStreamCancellation, cts))
                 {
-                    _currentTTSCancellation = null;
+                    _currentAIStreamCancellation = null;
                 }
             }
-
-            if (IsRequestStale(requestSessionVersion))
-            {
-                FinishRequestIfCurrent(requestSessionVersion);
-                return;
-            }
-
-            if (thinkingBubble != null)
-            {
-                thinkingBubble.SetText(responseData2.dialogue);
-            }
-
-            ExecuteCharacterAction(responseData2);
-            chatHistory.Add(new ChatMessage
-                { role = "assistant", parts = new List<ChatPart> { new ChatPart { text = aiResponseJson } } });
-
-            // 自动保存到数据库
-            AutoSaveToDatabase();
         }
-        else
+
+        string aiResponseJson = await AIService.GetAIResponse(chatHistoryForAI);
+        if (IsRequestStale(requestSessionVersion))
+        {
+            return null;
+        }
+
+        AIResponseData responseData2 = ParseAIResponse(aiResponseJson);
+        if (responseData2 == null)
         {
             if (thinkingBubble != null)
             {
                 thinkingBubble.SetText("抱歉，我好像走神了...");
             }
+            return null;
         }
 
-        FinishRequestIfCurrent(requestSessionVersion);
+        _currentTTSCancellation = new CancellationTokenSource();
+        var ttsCts = _currentTTSCancellation;
+        _isTTSPlaying = true;
+        try
+        {
+            if (audioManager != null)
+            {
+                await audioManager.PlayTTS(responseData2.dialogue, ttsCts.Token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            UnityEngine.Debug.Log("[DialogueManager] TTS 被用户打断");
+        }
+        finally
+        {
+            _isTTSPlaying = false;
+            if (ReferenceEquals(_currentTTSCancellation, ttsCts))
+            {
+                _currentTTSCancellation = null;
+            }
+        }
+
+        if (IsRequestStale(requestSessionVersion))
+        {
+            return null;
+        }
+
+        if (thinkingBubble != null)
+        {
+            thinkingBubble.SetText(responseData2.dialogue);
+        }
+
+        return aiResponseJson;
+    }
+
+    private bool CommitAssistantResponse(string aiResponseJson)
+    {
+        if (string.IsNullOrEmpty(aiResponseJson) || chatHistory == null)
+        {
+            return false;
+        }
+
+        AIResponseData responseData = ParseAIResponse(aiResponseJson);
+        if (responseData == null)
+        {
+            return false;
+        }
+
+        ExecuteCharacterAction(responseData);
+        chatHistory.Add(new ChatMessage
+            { role = "assistant", parts = new List<ChatPart> { new ChatPart { text = aiResponseJson } } });
+        AutoSaveToDatabase();
+        return true;
+    }
+
+    private async Task GenerateOpeningMessageAsync(CharacterProfile profileToUse, int requestSessionVersion)
+    {
+        if (profileToUse == null || chatHistory == null)
+        {
+            return;
+        }
+
+        isWaitingForAI = true;
+        MessageBubble thinkingBubble = AddMessageToUI("...", false);
+
+        try
+        {
+            var chatHistoryForAI = CloneChatHistoryForAI();
+            chatHistoryForAI.Add(new ChatMessage
+            {
+                role = "user",
+                parts = new List<ChatPart> { new ChatPart { text = BuildOpeningBootstrapPrompt(profileToUse) } }
+            });
+            AppendStatsHintToLastUserMessage(chatHistoryForAI);
+
+            string aiResponseJson = await RequestAIResponseJsonAsync(chatHistoryForAI, thinkingBubble, requestSessionVersion);
+            if (IsRequestStale(requestSessionVersion))
+            {
+                return;
+            }
+
+            if (CommitAssistantResponse(aiResponseJson))
+            {
+                return;
+            }
+
+            string fallbackDialogue = BuildFallbackOpeningDialogue(profileToUse);
+            if (thinkingBubble != null)
+            {
+                thinkingBubble.SetText(fallbackDialogue);
+            }
+            CommitAssistantResponse(BuildFirstMessageJson(fallbackDialogue));
+        }
+        catch (Exception ex)
+        {
+            if (IsRequestStale(requestSessionVersion))
+            {
+                return;
+            }
+
+            UnityEngine.Debug.LogError($"[DialogueManager] 生成开场白失败: {ex}");
+            string fallbackDialogue = BuildFallbackOpeningDialogue(profileToUse);
+            if (thinkingBubble != null)
+            {
+                thinkingBubble.SetText(fallbackDialogue);
+            }
+            CommitAssistantResponse(BuildFirstMessageJson(fallbackDialogue));
+        }
+        finally
+        {
+            FinishRequestIfCurrent(requestSessionVersion);
+        }
+    }
+
+    private string BuildOpeningBootstrapPrompt(CharacterProfile profileToUse)
+    {
+        string charName = profileToUse != null && !string.IsNullOrWhiteSpace(profileToUse.characterName)
+            ? profileToUse.characterName
+            : "Kanari";
+
+        StringBuilder prompt = new StringBuilder();
+        prompt.Append("[系统提示：现在是这段对话的开始阶段。请你以");
+        prompt.Append(charName);
+        prompt.Append("的身份，主动对用户说出第一句或第一段开场白，不要等待用户先说话。");
+        prompt.Append("你仍然必须只返回严格合法的JSON对象。");
+        prompt.Append("dialogue字段要自然、简洁，符合角色设定与当前情境。");
+        prompt.Append("这是首次开场，affinityChange、moodChange、energyChange、stressChange、trustChange 应尽量温和，通常接近 0。");
+
+        if (profileToUse != null && !string.IsNullOrWhiteSpace(profileToUse.openingMessage))
+        {
+            prompt.Append("角色卡里有一段示例开场白，你可以参考其中的氛围和信息，但不要原样照抄：\n");
+            prompt.Append(profileToUse.openingMessage);
+        }
+
+        prompt.Append("]");
+        return prompt.ToString();
+    }
+
+    private string BuildFallbackOpeningDialogue(CharacterProfile profileToUse)
+    {
+        if (profileToUse != null && !string.IsNullOrWhiteSpace(profileToUse.openingMessage))
+        {
+            return profileToUse.openingMessage;
+        }
+
+        string charName = profileToUse != null && !string.IsNullOrWhiteSpace(profileToUse.characterName)
+            ? profileToUse.characterName
+            : "Kanari";
+        return $"你好，我是{charName}，很高兴见到你。";
     }
 
     /// <summary>
@@ -1036,8 +1190,14 @@ public class DialogueManager : MonoBehaviour
     {
         CharacterProfile profileToUse = null;
 
-        // 优先使用 Inspector 中拖入的角色卡文件
-        if (characterCardFile != null)
+        // 优先使用用户当前选中的外部角色卡文件
+        if (TryBuildProfileFromSelectedPath(out var selectedProfile))
+        {
+            profileToUse = selectedProfile;
+        }
+
+        // 其次使用 Inspector 中拖入的角色卡文件
+        if (profileToUse == null && characterCardFile != null)
         {
             string defaultName = characterCardFile.name;
             profileToUse = CharacterCardParser.ParseFromText(characterCardFile.text, defaultName);
@@ -1070,6 +1230,115 @@ public class DialogueManager : MonoBehaviour
         return CharacterCardParser.ParseFromText(cardFile.text, defaultName);
     }
 
+    private CharacterProfile BuildProfileForCharacterName(string characterName)
+    {
+        var textAsset = Resources.Load<TextAsset>($"Characters/{characterName}");
+        if (textAsset != null)
+        {
+            return CharacterCardParser.ParseFromText(textAsset.text, characterName);
+        }
+
+        if (TryBuildProfileFromSelectedPath(out var selectedProfile))
+        {
+            if (selectedProfile != null && string.IsNullOrEmpty(selectedProfile.characterName))
+            {
+                selectedProfile.characterName = characterName;
+            }
+
+            return selectedProfile;
+        }
+
+        var fallbackProfile = ScriptableObject.CreateInstance<CharacterProfile>();
+        fallbackProfile.characterName = characterName;
+        return fallbackProfile;
+    }
+
+    private bool TryBuildProfileFromSelectedPath(out CharacterProfile profile)
+    {
+        return TryBuildProfileFromFilePath(_characterCardFilePath, out profile);
+    }
+
+    private bool TryBuildProfileFromFilePath(string filePath, out CharacterProfile profile)
+    {
+        profile = null;
+
+        if (string.IsNullOrEmpty(filePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            string fullPath = Path.GetFullPath(filePath);
+            if (!File.Exists(fullPath))
+            {
+                Debug.LogWarning($"[DialogueManager] 角色卡文件不存在: {fullPath}");
+                return false;
+            }
+
+            string cardText = File.ReadAllText(fullPath);
+            string defaultName = Path.GetFileNameWithoutExtension(fullPath);
+            profile = CharacterCardParser.ParseFromText(cardText, string.IsNullOrEmpty(defaultName) ? "Kanari" : defaultName);
+            if (profile == null)
+            {
+                Debug.LogWarning($"[DialogueManager] 角色卡解析失败: {fullPath}");
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[DialogueManager] 读取角色卡文件失败: {filePath}\n{ex}");
+            return false;
+        }
+    }
+
+    private void RestoreSelectedCharacterCardPath()
+    {
+        if (string.IsNullOrEmpty(_currentUsername))
+        {
+            _characterCardFilePath = null;
+            return;
+        }
+
+        string savedPath = PlayerPrefs.GetString(GetCharacterCardPrefsKey(), string.Empty);
+        _characterCardFilePath = string.IsNullOrEmpty(savedPath) ? null : savedPath;
+    }
+
+    private void PersistSelectedCharacterCardPath()
+    {
+        if (string.IsNullOrEmpty(_currentUsername))
+        {
+            return;
+        }
+
+        string prefsKey = GetCharacterCardPrefsKey();
+        if (string.IsNullOrEmpty(_characterCardFilePath))
+        {
+            PlayerPrefs.DeleteKey(prefsKey);
+        }
+        else
+        {
+            PlayerPrefs.SetString(prefsKey, _characterCardFilePath);
+        }
+
+        PlayerPrefs.Save();
+    }
+
+    private string GetCharacterCardPrefsKey()
+    {
+        return $"{CharacterCardPathPrefsKeyPrefix}_{_currentUsername}";
+    }
+
+    private void ClearAutosaveForCurrentUser()
+    {
+        if (!string.IsNullOrEmpty(_currentUsername) && DatabaseManager.Instance != null)
+        {
+            DatabaseManager.Instance.DeleteSaveSlot(_currentUsername, "autosave");
+        }
+    }
+
     private void EnsureProfileDefaults(CharacterProfile profile)
     {
         if (profile == null) return;
@@ -1100,14 +1369,11 @@ public class DialogueManager : MonoBehaviour
         EnsureProfileDefaults(profileToUse);
 
         string personaSafe = string.IsNullOrEmpty(profileToUse.persona) ? "" : profileToUse.persona;
-        string openingSafe = string.IsNullOrEmpty(profileToUse.openingMessage) ? "" : profileToUse.openingMessage;
-        string userSafe = string.IsNullOrEmpty(profileToUse.userName) ? "User" : profileToUse.userName;
         string charSafe = string.IsNullOrEmpty(profileToUse.characterName) ? "Kanari" : profileToUse.characterName;
         string rawCardSafe = string.IsNullOrEmpty(profileToUse.rawCardText) ? "" : profileToUse.rawCardText;
 
         _activeProfile = profileToUse;
         string charName = charSafe;
-        string userName = userSafe;
 
         currentAffinity = 50;
         currentMood = 50;
@@ -1134,24 +1400,15 @@ public class DialogueManager : MonoBehaviour
             "【绝对禁止】输出思考过程、分析过程、推理过程或任何<think>...</think>内容。\n" +
             "【绝对禁止】在dialogue字段使用颜文字或特殊表情符号。只能使用标准的文字和标点。";
 
-/*
-        string firstMessageJson = BuildFirstMessageJson(openingSafe);
-*/
-
-        string firstMessageJson = "{\"dialogue\":\"很高兴认识你！\",\"emotion\":\"Smile\",\"action\":\"Hello\",\"affinityChange\":0,\"moodChange\":0,\"energyChange\":0,\"stressChange\":0,\"trustChange\":0}";
-
         chatHistory = new List<ChatMessage>
         {
-            new ChatMessage { role = "system", parts = new List<ChatPart> { new ChatPart { text = systemPrompt } } },
-            new ChatMessage
-                { role = "assistant", parts = new List<ChatPart> { new ChatPart { text = firstMessageJson } } }
+            new ChatMessage { role = "system", parts = new List<ChatPart> { new ChatPart { text = systemPrompt } } }
         };
 
         ClearUI();
-        // 开场白直接显示在屏幕上，不经过 AI
-        AddMessageToUI(openingSafe, false);
-        ExecuteCharacterAction(new AIResponseData { dialogue = openingSafe, emotion = "Smile", action = "Hello" });
         _chatInitialized = true;
+        isWaitingForAI = true;
+        _ = GenerateOpeningMessageAsync(profileToUse, _sessionVersion);
     }
 
     private string BuildSystemPrompt(string charName, string persona)

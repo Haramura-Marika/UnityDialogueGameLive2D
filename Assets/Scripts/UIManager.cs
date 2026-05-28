@@ -1,64 +1,62 @@
-﻿using UnityEngine;
+using System.Threading.Tasks;
+using AI.Chat;
+using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// UI管理器 - 管理所有UI界面的显示和隐藏
-/// </summary>
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
-    [Header("UI 面板")]
-    [SerializeField] private GameObject startPanel;      // 开始面板
-    [SerializeField] private GameObject loginPanel;      // 登录面板（新增）
-    [SerializeField] private GameObject gamePanel;       // 游戏面板
-    [SerializeField] private GameObject pausePanel;      // 暂停面板
+    [Header("UI Panels")]
+    [SerializeField] private GameObject startPanel;
+    [SerializeField] private GameObject loginPanel;
+    [SerializeField] private GameObject gamePanel;
+    [SerializeField] private GameObject pausePanel;
 
-    [Header("开始面板按钮")]
-    [SerializeField] private Button startButton;         // 开始游戏按钮
-    [SerializeField] private Button quitButton;          // 退出按钮
+    [Header("Start Buttons")]
+    [SerializeField] private Button startButton;
+    [SerializeField] private Button quitButton;
 
-    [Header("暂停菜单按钮")]
+    [Header("Pause Buttons")]
     [SerializeField] private Button resumeButton;
     [SerializeField] private Button backToStartButton;
     [SerializeField] private Button newGameButton;
     [SerializeField] private Button saveGameButton;
-    [SerializeField] private Button switchUserButton;      // 切换用户按钮（原loadGameButton）
+    [SerializeField] private Button switchUserButton;
 
-    [Header("游戏内按钮")]
+    [Header("In-Game Buttons")]
     [SerializeField] private Button pauseButton;
 
     private bool isPaused = false;
+    private bool isSwitchingCharacterCard = false;
 
     private void Awake()
     {
-        // 单例模式
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
             return;
         }
+
         Instance = this;
     }
 
     private void Start()
     {
-        // 确保数据库初始化
         DatabaseManager.EnsureInitialized();
 
-        // 绑定按钮事件
         if (startButton != null)
             startButton.onClick.AddListener(OnStartButtonClicked);
-        
+
         if (quitButton != null)
             quitButton.onClick.AddListener(QuitGame);
-        
+
         if (pauseButton != null)
             pauseButton.onClick.AddListener(PauseGame);
-        
+
         if (resumeButton != null)
             resumeButton.onClick.AddListener(ResumeGame);
-        
+
         if (backToStartButton != null)
             backToStartButton.onClick.AddListener(BackToStart);
 
@@ -69,15 +67,13 @@ public class UIManager : MonoBehaviour
             saveGameButton.onClick.AddListener(OnSaveGameClicked);
 
         if (switchUserButton != null)
-            switchUserButton.onClick.AddListener(OnSwitchUserClicked);
+            switchUserButton.onClick.AddListener(OnSwitchCharacterCardClicked);
 
-        // 初始显示开始面板
         ShowStartPanel();
     }
 
     private void Update()
     {
-        // ESC键快捷暂停/继续
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (gamePanel != null && gamePanel.activeSelf)
@@ -90,13 +86,6 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // ==========================================
-    // 面板切换
-    // ==========================================
-
-    /// <summary>
-    /// 显示开始界面
-    /// </summary>
     public void ShowStartPanel()
     {
         SetPanelActive(startPanel, true);
@@ -105,24 +94,18 @@ public class UIManager : MonoBehaviour
         SetPanelActive(pausePanel, false);
         Time.timeScale = 1f;
         isPaused = false;
-        Debug.Log("[UIManager] 显示开始面板");
+        Debug.Log("[UIManager] \u663e\u793a\u5f00\u59cb\u9762\u677f");
     }
 
-    /// <summary>
-    /// 点击"开始游戏"按钮 → 显示登录面板
-    /// </summary>
     private void OnStartButtonClicked()
     {
         SetPanelActive(startPanel, false);
         SetPanelActive(loginPanel, true);
         SetPanelActive(gamePanel, false);
         SetPanelActive(pausePanel, false);
-        Debug.Log("[UIManager] 显示登录面板");
+        Debug.Log("[UIManager] \u663e\u793a\u767b\u5f55\u9762\u677f");
     }
 
-    /// <summary>
-    /// 登录成功后由 LoginUIManager 调用，直接进入游戏
-    /// </summary>
     public void EnterGame()
     {
         SetPanelActive(startPanel, false);
@@ -132,51 +115,37 @@ public class UIManager : MonoBehaviour
         Time.timeScale = 1f;
         isPaused = false;
 
-        // 登录成功后初始化对话（开场白在此时才输出）
         if (DialogueManager.Instance != null)
         {
             DialogueManager.Instance.InitChat();
         }
 
-        Debug.Log("[UIManager] 登录成功，进入游戏");
+        Debug.Log("[UIManager] \u767b\u5f55\u6210\u529f\uff0c\u8fdb\u5165\u6e38\u620f");
     }
 
-    /// <summary>
-    /// 暂停游戏
-    /// </summary>
     public void PauseGame()
     {
         if (isPaused) return;
-        
+
         SetPanelActive(pausePanel, true);
         Time.timeScale = 0f;
         isPaused = true;
-        Debug.Log("[UIManager] 暂停游戏");
+        Debug.Log("[UIManager] \u6682\u505c\u6e38\u620f");
     }
 
-    /// <summary>
-    /// 继续游戏
-    /// </summary>
     public void ResumeGame()
     {
         if (!isPaused) return;
-        
+
         SetPanelActive(pausePanel, false);
         Time.timeScale = 1f;
         isPaused = false;
-        Debug.Log("[UIManager] 继续游戏");
+        Debug.Log("[UIManager] \u7ee7\u7eed\u6e38\u620f");
     }
 
-    /// <summary>
-    /// 返回开始界面
-    /// </summary>
     public void BackToStart()
     {
         ShowStartPanel();
-        
-        // 清理游戏状态（如果需要）
-        // 例如：重置对话历史、停止TTS等
-        // 注意：由于项目引用限制，需要在游戏中手动处理
     }
 
     private void OnNewGameClicked()
@@ -185,7 +154,7 @@ public class UIManager : MonoBehaviour
         {
             DialogueManager.Instance.RestartChat();
             ResumeGame();
-            Debug.Log("[UIManager] 新建游戏，重置当前对话");
+            Debug.Log("[UIManager] \u65b0\u5efa\u6e38\u620f\uff0c\u91cd\u7f6e\u5f53\u524d\u5bf9\u8bdd");
         }
     }
 
@@ -194,43 +163,77 @@ public class UIManager : MonoBehaviour
         if (DialogueManager.Instance != null)
         {
             DialogueManager.Instance.SaveProgress("manual_save");
-            Debug.Log("[UIManager] 游戏已保存到数据库");
+            Debug.Log("[UIManager] \u6e38\u620f\u5df2\u4fdd\u5b58\u5230\u6570\u636e\u5e93");
         }
     }
 
-    /// <summary>
-    /// 切换用户：自动保存当前对话，清除状态，返回登录面板
-    /// </summary>
-    private void OnSwitchUserClicked()
+    private async void OnSwitchCharacterCardClicked()
     {
-        // 自动保存当前对话进度
-        if (DialogueManager.Instance != null)
+        if (isSwitchingCharacterCard)
         {
-            DialogueManager.Instance.SaveProgress("autosave");
-            DialogueManager.Instance.ResetSession();
+            Debug.LogWarning("[UIManager] 角色卡切换流程正在进行，忽略重复点击");
+            return;
         }
 
-        // 清除当前用户
-        PlayerPrefs.DeleteKey("current_user");
-        PlayerPrefs.Save();
+        if (DialogueManager.Instance == null)
+        {
+            Debug.LogWarning("[UIManager] DialogueManager \u4e0d\u5b58\u5728\uff0c\u65e0\u6cd5\u5207\u6362\u89d2\u8272\u5361");
+            return;
+        }
 
-        // 显示登录面板
-        SetPanelActive(startPanel, false);
-        SetPanelActive(loginPanel, true);
-        SetPanelActive(gamePanel, false);
-        SetPanelActive(pausePanel, false);
-        Time.timeScale = 1f;
-        isPaused = false;
+        isSwitchingCharacterCard = true;
+        try
+        {
+            bool confirmed = FileDialogHelper.ShowConfirmationDialog(
+                "\u5207\u6362\u89d2\u8272\u5361",
+                "\u6b64\u64cd\u4f5c\u5c06\u4e0d\u4f1a\u4fdd\u5b58\u73b0\u6709\u6570\u636e\uff01\n\u5207\u6362\u5b8c\u6210\u540e\uff0c\u5f53\u524d\u5bf9\u8bdd\u5c06\u4ece\u5934\u5f00\u59cb\u3002\n\n\u662f\u5426\u7ee7\u7eed\uff1f");
+            if (!confirmed)
+            {
+                Debug.Log("[UIManager] \u7528\u6237\u53d6\u6d88\u5207\u6362\u89d2\u8272\u5361");
+                return;
+            }
 
-        Debug.Log("[UIManager] 切换用户，返回登录面板");
+            await Task.Yield();
+
+            string initialDirectory = DialogueManager.Instance.GetCharacterCardSelectionDirectory();
+            string cardPath;
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+            cardPath = await Task.Run(() => FileDialogHelper.ShowOpenFileDialog(
+                "\u9009\u62e9\u89d2\u8272\u5361\u6587\u4ef6",
+                "txt",
+                initialDirectory));
+#else
+            cardPath = FileDialogHelper.ShowOpenFileDialog(
+                "\u9009\u62e9\u89d2\u8272\u5361\u6587\u4ef6",
+                "txt",
+                initialDirectory);
+#endif
+            if (string.IsNullOrEmpty(cardPath))
+            {
+                Debug.Log("[UIManager] \u7528\u6237\u53d6\u6d88\u9009\u62e9\u89d2\u8272\u5361\u6587\u4ef6");
+                return;
+            }
+
+            if (!DialogueManager.Instance.TrySwitchCharacterCardFromFile(cardPath))
+            {
+                FileDialogHelper.ShowMessageDialog(
+                    "\u5207\u6362\u5931\u8d25",
+                    "\u9009\u4e2d\u7684\u6587\u4ef6\u4e0d\u662f\u6709\u6548\u7684\u89d2\u8272\u5361\uff0c\u6216\u8bfb\u53d6\u5931\u8d25\u3002");
+                return;
+            }
+
+            ResumeGame();
+            Debug.Log($"[UIManager] \u5df2\u5207\u6362\u89d2\u8272\u5361\u5e76\u91cd\u7f6e\u5f53\u524d\u5bf9\u8bdd: {cardPath}");
+        }
+        finally
+        {
+            isSwitchingCharacterCard = false;
+        }
     }
 
-    /// <summary>
-    /// 退出游戏
-    /// </summary>
     public void QuitGame()
     {
-        Debug.Log("[UIManager] 退出游戏");
+        Debug.Log("[UIManager] \u9000\u51fa\u6e38\u620f");
         #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
         #else
@@ -238,9 +241,6 @@ public class UIManager : MonoBehaviour
         #endif
     }
 
-    /// <summary>
-    /// 安全设置面板激活状态
-    /// </summary>
     private void SetPanelActive(GameObject panel, bool active)
     {
         if (panel != null)
@@ -249,9 +249,6 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 获取暂停状态
-    /// </summary>
     public bool IsPaused()
     {
         return isPaused;
